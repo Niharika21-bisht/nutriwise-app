@@ -1,0 +1,32 @@
+# Node & Frontend
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+.vite/
+frontend/.vite/
+
+# Python & Backend
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+backend/__pycache__/
+backend/app/__pycache__/
+env/
+venv/
+.venv/
+
+# Environment variables & secrets
+.env
+.env.local
+.env.*.local
+*.secret
+credentials.json
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
