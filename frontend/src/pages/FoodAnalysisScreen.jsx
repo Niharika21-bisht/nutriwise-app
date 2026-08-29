@@ -142,7 +142,11 @@ export default function FoodAnalysisScreen() {
             {verdictIcon}
             <div>
               <div className="text-xs font-black">{badge_label}</div>
-              <div className="text-[11px] opacity-80 mt-0.5">Scored against your {userProfile.goal?.replace('_', ' ')} target</div>
+              <div className="text-[11px] opacity-80 mt-0.5">
+                {userProfile.user_type === 'athlete'
+                  ? `Evaluated for ${userProfile.sport || 'Athletic'} Energy & Macro Targets`
+                  : `Evaluated against your Daily Calorie & Macronutrient Targets`}
+              </div>
             </div>
           </div>
           <div className={`px-2.5 py-1 rounded-xl text-xs font-black shadow-sm ${scoreBadgeColor}`}>
