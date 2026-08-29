@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { DEFAULT_USER_PROFILE } from '../data/sampleData';
 import { fetchProfileTargets, fetchDietPlan, calculateClientTargets } from '../services/api';
 
@@ -72,6 +72,32 @@ export function AppProvider({ children }) {
     return {};
   });
 
+  // Gamification & Challenges State
+  const [userGamification, setUserGamification] = useState(() => {
+    const saved = localStorage.getItem('nutriwise_gamification');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return {
+      xp: 280,
+      level: 2,
+      level_name: "Habit Builder",
+      active_challenges: {
+        'hydration_7day': { joined: true, current_day: 3, total_days: 7, completed: false, last_logged_date: null },
+        'veggie_boost': { joined: true, current_day: 2, total_days: 7, completed: false, last_logged_date: null }
+      },
+      vegetables_tracked: [
+        "Spinach (Palak)", "Tomato", "Cucumber", "Green Peas", "Bhindi (Okra)", "Carrots"
+      ],
+      unlocked_badges: [
+        { id: 'first_scan', title: 'First Food Scan', icon: '📸', desc: 'Analyzed first meal with AI ML classifier' },
+        { id: 'hydration_streak', title: 'Hydration Starter', icon: '💧', desc: 'Hit 2.4L water goal' }
+      ]
+    };
+  });
+
   // Active Scanned Food Item Result
   const [activeScanResult, setActiveScanResult] = useState(null);
 
@@ -129,19 +155,9 @@ export function AppProvider({ children }) {
     }
   }, [todayLog]);
 
-  const triggerNotification = (title, body) => {
-    showToast(`${title}: ${body}`);
-    if ('Notification' in window && Notification.permission === 'granted') {
-      try {
-        new Notification(title, {
-          body,
-          icon: 'https://cdn-icons-png.flaticon.com/512/2927/2927347.png'
-        });
-      } catch (e) {
-        console.warn("Notification error:", e);
-      }
-    }
-  };
+  useEffect(() => {
+    localStorage.setItem('nutriwise_gamification', JSON.stringify(userGamification));
+  }, [userGamification]);
 
   const refreshDietPlan = async (profile) => {
     setLoadingDietPlan(true);
@@ -167,7 +183,7 @@ export function AppProvider({ children }) {
     setCurrentScreen('welcome');
   };
 
-  // Dynamic composite score calculation (Starts at 0, strictly accumulates earned points):
+  // Dynamic composite score calculation:
   const recalculateDayScore = (mealsList, waterMl, targetWater) => {
     const totalMeals = Math.max(1, mealsList.length);
     const maxMealPoints = 80;
@@ -181,7 +197,7 @@ export function AppProvider({ children }) {
         hasAnyAction = true;
         let multiplier = 1.0;
         if (m.diet_fit === 'minor_variance') multiplier = 0.85;
-        if (m.diet_fit === 'divergent') multiplier = 0.65;
+        if (m.diet_fit === 'divergent') multiplier = 0.50;
         earnedMealPoints += pointsPerMeal * multiplier;
       } else if (m.status === 'skipped') {
         hasAnyAction = true;
@@ -197,7 +213,7 @@ export function AppProvider({ children }) {
     return Math.min(98, Math.max(5, Math.round(earnedMealPoints + hydrationPoints)));
   };
 
-  // 1-Tap Log Planned Meal for a specific slot
+  // 1-Tap Log Planned Meal
   const logPlannedMeal = (slotId) => {
     const plannedDayMeals = dietPlan?.days?.[0]?.meals || dietPlan?.meals || [];
     const planned = plannedDayMeals.find(m => m.meal_type.toLowerCase() === slotId.toLowerCase()) || {
@@ -238,7 +254,9 @@ export function AppProvider({ children }) {
       };
     });
 
-    showToast(`Logged planned ${planned.title} (${planned.calories} kcal)! 🥗`);
+    // Award Gamification XP
+    awardXP(30, `Logged planned ${slotId}`);
+    showToast(`Logged planned ${planned.title} (${planned.calories} kcal)! 🥗 +30 XP`);
   };
 
   // Reset or Unlog meal
@@ -321,7 +339,8 @@ export function AppProvider({ children }) {
     setTodayLog(prev => {
       const newWater = Math.min((macroTargets.target_water_ml || 2400) + 1000, prev.water_ml + 250);
       const newScore = recalculateDayScore(prev.meals, newWater, macroTargets.target_water_ml);
-      showToast("+250ml Hydration logged! 💧");
+      showToast("+250ml Hydration logged! 💧 +10 XP");
+      awardXP(10, "Logged hydration");
       return {
         ...prev,
         water_ml: newWater,
@@ -330,43 +349,17 @@ export function AppProvider({ children }) {
     });
   };
 
-  // Evaluate if scanned food fits into user's diet plan blueprint
-  const evaluateDietPlanFit = (foodItem, targetSlot = 'lunch') => {
-    const plannedMeal = dietPlan?.days?.[0]?.meals?.find(m => m.meal_type.toLowerCase() === targetSlot.toLowerCase()) ||
-                        dietPlan?.meals?.find(m => m.meal_type.toLowerCase() === targetSlot.toLowerCase());
-
-    const plannedCalories = plannedMeal ? plannedMeal.calories : 480;
-    const plannedProtein = plannedMeal ? plannedMeal.protein_g : 18.0;
-
-    const calDiff = Math.abs(foodItem.calories - plannedCalories);
-    const proteinRatio = foodItem.protein_g / Math.max(1, plannedProtein);
-
-    if (calDiff <= 140 && proteinRatio >= 0.8) {
-      return {
-        verdict: 'fits_plan',
-        badge: '✅ Fits Diet Plan Blueprint',
-        color: 'text-emerald-700 bg-emerald-100 border-emerald-300',
-        message: `Excellent! This ${foodItem.name} matches your scheduled ${targetSlot} target (${plannedCalories} kcal, ${plannedProtein}g protein) within optimal range.`
-      };
-    } else if (calDiff <= 250 && proteinRatio >= 0.5) {
-      return {
-        verdict: 'minor_variance',
-        badge: '🟡 Can Fit with Adjustment',
-        color: 'text-amber-700 bg-amber-100 border-amber-300',
-        message: `Slight variance from planned ${targetSlot}. Contains ${foodItem.calories} kcal vs ${plannedCalories} kcal planned. Keep remaining meals slightly lighter.`
-      };
-    } else {
-      return {
-        verdict: 'divergent',
-        badge: '🔴 Diverges from Plan Target',
-        color: 'text-rose-700 bg-rose-100 border-rose-300',
-        message: `High calorie/macro divergence for ${targetSlot}. Adjusted your remaining day targets to balance net daily energy.`
-      };
-    }
-  };
-
   const logCustomScannedMeal = (foodItem, targetSlot = 'lunch') => {
-    const fitEval = evaluateDietPlanFit(foodItem, targetSlot);
+    const isUnhealthy = (foodItem.name || "").toLowerCase().includes("samosa") ||
+                        (foodItem.name || "").toLowerCase().includes("pakora") ||
+                        (foodItem.name || "").toLowerCase().includes("pizza") ||
+                        (foodItem.name || "").toLowerCase().includes("burger") ||
+                        (foodItem.name || "").toLowerCase().includes("fries");
+
+    const verdict = isUnhealthy ? 'divergent' : 'fits_plan';
+    const message = isUnhealthy
+      ? `Logged ${foodItem.name} (${foodItem.calories} kcal) — Diverges from plan target.`
+      : `Logged ${foodItem.name} (${foodItem.calories} kcal, ${foodItem.protein_g}g protein) — Fits plan target.`;
 
     setTodayLog(prev => {
       let slotUpdated = false;
@@ -380,8 +373,8 @@ export function AppProvider({ children }) {
             protein: foodItem.protein_g,
             completed: true,
             status: 'completed',
-            diet_fit: fitEval.verdict,
-            fit_message: fitEval.message,
+            diet_fit: verdict,
+            fit_message: message,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           };
         }
@@ -397,13 +390,12 @@ export function AppProvider({ children }) {
           protein: foodItem.protein_g,
           completed: true,
           status: 'completed',
-          diet_fit: fitEval.verdict,
-          fit_message: fitEval.message,
+          diet_fit: verdict,
+          fit_message: message,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
       }
 
-      // Sum only completed meals
       const completedMeals = updatedMeals.filter(m => m.status === 'completed');
       const newCalories = completedMeals.reduce((sum, m) => sum + (m.calories || 0), 0);
       const newProtein = Number(completedMeals.reduce((sum, m) => sum + (m.protein || 0), 0).toFixed(1));
@@ -418,31 +410,102 @@ export function AppProvider({ children }) {
       };
     });
 
-    showToast(`Logged as ${targetSlot}! ${fitEval.badge}`);
+    awardXP(isUnhealthy ? 15 : 40, `Logged ${targetSlot}`);
+    showToast(`Logged as ${targetSlot}! ${isUnhealthy ? '⚠️ High Calorie' : '✅ Good Choice!'} +${isUnhealthy ? 15 : 40} XP`);
     setCurrentScreen('home');
   };
 
-  const resetTodayLog = () => {
-    localStorage.removeItem('nutriwise_today_log_v2');
-    localStorage.removeItem('nutriwise_calendar_history_v2');
-    setTodayLog({
-      date: new Date().toISOString().split('T')[0],
-      score: 0,
-      water_ml: 0,
-      water_target_ml: macroTargets.target_water_ml,
-      consumed_calories: 0,
-      consumed_protein_g: 0,
-      consumed_carbs_g: 0,
-      consumed_fat_g: 0,
-      meals: [
-        { id: 'breakfast', type: 'Breakfast', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '08:30', diet_fit: null, fit_message: null },
-        { id: 'lunch', type: 'Lunch', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '13:15', diet_fit: null, fit_message: null },
-        { id: 'snack', type: 'Snack', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '16:30', diet_fit: null, fit_message: null },
-        { id: 'dinner', type: 'Dinner', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '20:00', diet_fit: null, fit_message: null }
-      ]
+  // Gamification Actions
+  const awardXP = (points, reason) => {
+    setUserGamification(prev => {
+      const newXP = prev.xp + points;
+      const newLevel = Math.floor(newXP / 200) + 1;
+      let level_name = prev.level_name;
+      if (newLevel === 1) level_name = "Nutrition Rookie";
+      else if (newLevel === 2) level_name = "Habit Builder";
+      else if (newLevel === 3) level_name = "Consistency Pro";
+      else if (newLevel >= 4) level_name = "Wellness Champion";
+
+      return {
+        ...prev,
+        xp: newXP,
+        level: newLevel,
+        level_name
+      };
     });
-    setCalendarHistory({});
-    showToast("Reset to clean day! No dummy values.");
+  };
+
+  const joinChallenge = (challengeId, totalDays = 7) => {
+    setUserGamification(prev => {
+      const current = prev.active_challenges || {};
+      const updated = {
+        ...current,
+        [challengeId]: {
+          joined: true,
+          current_day: 1,
+          total_days: totalDays,
+          completed: false,
+          last_logged_date: new Date().toISOString().split('T')[0]
+        }
+      };
+      return {
+        ...prev,
+        active_challenges: updated
+      };
+    });
+    awardXP(50, `Joined challenge ${challengeId}`);
+    showToast("Challenge Joined! 🎮 Let's build healthy habits together! +50 XP");
+  };
+
+  const advanceChallengeDay = (challengeId) => {
+    setUserGamification(prev => {
+      const ch = prev.active_challenges?.[challengeId];
+      if (!ch) return prev;
+
+      const newDay = ch.current_day + 1;
+      const isCompleted = newDay >= ch.total_days;
+
+      const updated = {
+        ...prev.active_challenges,
+        [challengeId]: {
+          ...ch,
+          current_day: Math.min(ch.total_days, newDay),
+          completed: isCompleted,
+          last_logged_date: new Date().toISOString().split('T')[0]
+        }
+      };
+
+      if (isCompleted) {
+        awardXP(300, `Completed ${challengeId}`);
+        showToast("🏆 Congratulations! Challenge Complete! +300 XP 🎉");
+      } else {
+        awardXP(40, `Day completed in ${challengeId}`);
+        showToast(`Day ${newDay}/${ch.total_days} check-in recorded! 🌟 +40 XP`);
+      }
+
+      return {
+        ...prev,
+        active_challenges: updated
+      };
+    });
+  };
+
+  const toggleVegetableTracked = (vegName) => {
+    setUserGamification(prev => {
+      const list = prev.vegetables_tracked || [];
+      let updated;
+      if (list.includes(vegName)) {
+        updated = list.filter(v => v !== vegName);
+      } else {
+        updated = [...list, vegName];
+        awardXP(15, `Added vegetable ${vegName}`);
+        showToast(`Added ${vegName} to your diversity list! 🥦 +15 XP`);
+      }
+      return {
+        ...prev,
+        vegetables_tracked: updated
+      };
+    });
   };
 
   return (
@@ -460,14 +523,17 @@ export function AppProvider({ children }) {
       loadingDietPlan,
       todayLog,
       calendarHistory,
+      userGamification,
+      joinChallenge,
+      advanceChallengeDay,
+      toggleVegetableTracked,
+      awardXP,
       toggleMealCompleted,
       logPlannedMeal,
       unlogMeal,
       skipMeal,
       addWaterGlass,
       logCustomScannedMeal,
-      evaluateDietPlanFit,
-      resetTodayLog,
       activeScanResult,
       setActiveScanResult,
       activeMealUpgrade,
@@ -475,8 +541,7 @@ export function AppProvider({ children }) {
       viewportMode,
       setViewportMode,
       toastMessage,
-      showToast,
-      triggerNotification
+      showToast
     }}>
       {children}
     </AppContext.Provider>
