@@ -10,7 +10,7 @@ export default function Navbar() {
   const screenTitles = {
     home: 'NutriWise',
     profile: 'My Profile',
-    diet_plan: '3-Day Diet Plan',
+    diet_plan: 'Next Week Diet Plan',
     progress: 'Nutrition Calendar',
     scan: 'Food & Barcode Scanner',
     food_analysis: 'Nutritional Breakdown',

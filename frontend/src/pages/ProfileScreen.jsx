@@ -284,8 +284,8 @@ export default function ProfileScreen() {
               <UtensilsCrossed className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs font-extrabold text-slate-800">3-Day Personalized Diet Plan</div>
-              <div className="text-[11px] text-slate-500">View upcoming meals & advance grocery list</div>
+              <div className="text-xs font-extrabold text-slate-800">7-Day Next Week Diet Plan</div>
+              <div className="text-[11px] text-slate-500">View 7-day meal schedule & grocery checklist</div>
             </div>
           </div>
           <ChevronRight className="w-4 h-4 text-slate-400" />
