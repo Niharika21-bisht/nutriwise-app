@@ -232,6 +232,10 @@ export default function DietPlanScreen() {
                 fat={meal.fat_g}
                 prepTime={meal.prep_time}
                 ingredients={meal.ingredients}
+                alternatives={meal.alternatives}
+                onSwapMeal={(type, alt) => {
+                  showToast(`Selected "${alt.title}" for ${type}! 🥗`);
+                }}
               />
             ))}
           </div>
