@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle2, AlertTriangle, XCircle, Flame, Dumbbell, Sparkles, ChevronDown, ChevronUp, Plus, ShieldCheck, Eye, EyeOff, Ban, RefreshCw, Check, ArrowRight, MapPin, Zap } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, AlertTriangle, XCircle, Flame, Dumbbell, Sparkles, ChevronDown, ChevronUp, Plus, ShieldCheck, Eye, EyeOff, Ban, RefreshCw, Check, ArrowRight, MapPin, Zap, AlertOctagon } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { evaluateDietPlanSuitabilityAndAlternatives } from '../services/foodIntelligence';
 
@@ -54,11 +54,6 @@ export default function FoodAnalysisScreen() {
 
   const {
     food_item = { name: "Scanned Meal", calories: 380, protein_g: 15.0, carbs_g: 54.0, fat_g: 12.0, category: "Balanced Meal", serving_size: "1 portion" },
-    verdict = "good_fit",
-    score = 7.8,
-    badge_label = "Good Choice",
-    rationale = "Nutritional analysis complete.",
-    suggestions = [],
     scannedImage
   } = activeScanResult;
 
@@ -70,18 +65,22 @@ export default function FoodAnalysisScreen() {
     userProfile
   );
 
-  let verdictBg = "bg-emerald-50 border-emerald-200 text-emerald-900";
-  let scoreBadgeColor = "bg-emerald-600 text-white";
-  let verdictIcon = <CheckCircle2 className="w-5 h-5 text-emerald-600" />;
+  const isNotSuitable = suitabilityAnalysis.suitability === 'not_suitable';
+  const isPartiallySuitable = suitabilityAnalysis.suitability === 'partially_suitable';
 
-  if (suitabilityAnalysis.suitability === 'partially_suitable') {
-    verdictBg = "bg-amber-50 border-amber-200 text-amber-900";
+  let verdictBg = "bg-emerald-50 border-emerald-300 text-emerald-950";
+  let scoreBadgeColor = "bg-emerald-600 text-white";
+  let verdictIcon = <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />;
+  let displayScore = isNotSuitable ? 3.8 : isPartiallySuitable ? 6.5 : 8.8;
+
+  if (isPartiallySuitable) {
+    verdictBg = "bg-amber-50 border-amber-300 text-amber-950";
     scoreBadgeColor = "bg-amber-500 text-white";
-    verdictIcon = <AlertTriangle className="w-5 h-5 text-amber-600" />;
-  } else if (suitabilityAnalysis.suitability === 'not_suitable') {
-    verdictBg = "bg-rose-50 border-rose-200 text-rose-900";
+    verdictIcon = <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />;
+  } else if (isNotSuitable) {
+    verdictBg = "bg-rose-50 border-rose-300 text-rose-950";
     scoreBadgeColor = "bg-rose-600 text-white";
-    verdictIcon = <XCircle className="w-5 h-5 text-rose-600" />;
+    verdictIcon = <XCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />;
   }
 
   const handleConfirmLogScanned = () => {
@@ -137,8 +136,8 @@ export default function FoodAnalysisScreen() {
         )}
 
         {!scannedImage && (
-          <div className="p-4 bg-gradient-to-br from-emerald-50 to-teal-50 border-b border-emerald-100">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 block">
+          <div className={`p-4 border-b ${isNotSuitable ? 'bg-rose-50/70 border-rose-200' : 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-100'}`}>
+            <span className={`text-[10px] font-extrabold uppercase tracking-wider block ${isNotSuitable ? 'text-rose-700' : 'text-emerald-700'}`}>
               {food_item.category}
             </span>
             <h3 className="text-xl font-black text-slate-900 mt-0.5">{food_item.name}</h3>
@@ -146,36 +145,36 @@ export default function FoodAnalysisScreen() {
           </div>
         )}
 
-        {/* Suitability Badge */}
+        {/* Master Suitability Status Banner */}
         <div className={`p-4 border-t border-b ${verdictBg} flex items-center justify-between`}>
           <div className="flex items-center gap-2.5">
             {verdictIcon}
             <div>
-              <div className="text-xs font-black">{badge_label}</div>
-              <div className="text-[11px] opacity-80 mt-0.5">
-                {userProfile.user_type === 'athlete'
-                  ? `Evaluated for ${userProfile.sport || 'Athletic'} Energy & Macro Targets`
+              <div className="text-xs font-black">{suitabilityAnalysis.badgeText}</div>
+              <div className="text-[11px] opacity-90 mt-0.5">
+                {isNotSuitable
+                  ? "Exceeds calorie/fat budget with low protein density"
                   : `Evaluated against your Daily Calorie & Macronutrient Targets`}
               </div>
             </div>
           </div>
-          <div className={`px-2.5 py-1 rounded-xl text-xs font-black shadow-sm ${scoreBadgeColor}`}>
-            {score} / 10
+          <div className={`px-2.5 py-1 rounded-xl text-xs font-black shadow-sm flex-shrink-0 ${scoreBadgeColor}`}>
+            {displayScore} / 10
           </div>
         </div>
 
         {/* Macro Numbers Grid */}
         <div className="p-4 grid grid-cols-4 gap-2 text-center bg-white">
-          <div className="p-2 rounded-2xl bg-slate-50 border border-slate-100">
+          <div className={`p-2 rounded-2xl border ${isNotSuitable && food_item.calories > 450 ? 'bg-rose-50/80 border-rose-200 text-rose-900' : 'bg-slate-50 border-slate-100'}`}>
             <span className="text-[10px] font-bold text-slate-400 uppercase block">Calories</span>
             <span className="text-sm font-black text-slate-800">{food_item.calories}</span>
             <span className="text-[9px] text-slate-400 block">kcal</span>
           </div>
 
-          <div className="p-2 rounded-2xl bg-blue-50 border border-blue-100 text-blue-900">
+          <div className={`p-2 rounded-2xl border ${food_item.protein_g < 8 ? 'bg-amber-50/80 border-amber-200 text-amber-900' : 'bg-blue-50 border-blue-100 text-blue-900'}`}>
             <span className="text-[10px] font-bold text-blue-500 uppercase block">Protein</span>
             <span className="text-sm font-black text-blue-700">{food_item.protein_g}g</span>
-            <span className="text-[9px] text-blue-400 block">Density</span>
+            <span className="text-[9px] text-blue-400 block">{food_item.protein_g < 8 ? 'Low' : 'Density'}</span>
           </div>
 
           <div className="p-2 rounded-2xl bg-slate-50 border border-slate-100">
@@ -184,16 +183,16 @@ export default function FoodAnalysisScreen() {
             <span className="text-[9px] text-slate-400 block">Energy</span>
           </div>
 
-          <div className="p-2 rounded-2xl bg-slate-50 border border-slate-100">
+          <div className={`p-2 rounded-2xl border ${food_item.fat_g > 20 ? 'bg-rose-50/80 border-rose-200 text-rose-900' : 'bg-slate-50 border-slate-100'}`}>
             <span className="text-[10px] font-bold text-slate-400 uppercase block">Fat</span>
             <span className="text-sm font-black text-slate-800">{food_item.fat_g}g</span>
-            <span className="text-[9px] text-slate-400 block">Lipids</span>
+            <span className="text-[9px] text-slate-400 block">{food_item.fat_g > 20 ? 'High' : 'Lipids'}</span>
           </div>
         </div>
       </div>
 
       {/* 2. 🎯 Personalized Diet Plan Suitability Card with In-Depth Explanation */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-soft space-y-3">
+      <div className={`p-4 rounded-3xl border shadow-soft space-y-3 ${isNotSuitable ? 'bg-rose-50/50 border-rose-200' : 'bg-white border-slate-100'}`}>
         <div className="flex items-center justify-between">
           <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
             Diet Plan Suitability Evaluation
@@ -204,7 +203,7 @@ export default function FoodAnalysisScreen() {
         </div>
 
         {/* Detailed Suitability Explanation */}
-        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs font-medium text-slate-700 leading-relaxed space-y-2">
+        <div className={`p-3.5 rounded-2xl border text-xs font-medium leading-relaxed space-y-2 ${isNotSuitable ? 'bg-white border-rose-200 text-rose-900' : 'bg-slate-50 border-slate-200/80 text-slate-700'}`}>
           <p>{suitabilityAnalysis.explanation}</p>
         </div>
 
@@ -231,15 +230,15 @@ export default function FoodAnalysisScreen() {
         </div>
       </div>
 
-      {/* 3. 💡 Recommended Equivalent Alternatives with Explanations */}
+      {/* 3. 💡 Recommended Seasonal Alternatives with Explanations */}
       {suitabilityAnalysis.alternatives && suitabilityAnalysis.alternatives.length > 0 && (
         <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-soft space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-emerald-600" />
               <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                {suitabilityAnalysis.suitability === 'not_suitable'
-                  ? "Better Alternatives for This Meal Window"
+                {isNotSuitable
+                  ? "Healthier Seasonal Alternatives (Recommended)"
                   : "Nutritionally Equivalent Local Alternatives"}
               </h4>
             </div>
@@ -249,8 +248,8 @@ export default function FoodAnalysisScreen() {
           </div>
 
           <p className="text-[11px] text-slate-500">
-            {suitabilityAnalysis.suitability === 'not_suitable'
-              ? "Since this food diverges from your goals, here are practical, locally sourced meals that perfectly match your targets:"
+            {isNotSuitable
+              ? `Instead of "${food_item.name}", here are practical, delicious local options that will keep your daily score high:`
               : "Prefer something else? These local seasonal dishes provide equivalent macro density:"}
           </p>
 
@@ -266,7 +265,6 @@ export default function FoodAnalysisScreen() {
                     <div className="flex items-center gap-2 mt-1 text-[10px] font-bold text-slate-600">
                       <span className="text-amber-700 font-black">🔥 {alt.calories} kcal</span>
                       <span className="text-blue-700 font-black">💪 {alt.protein_g}g protein</span>
-                      <span className="text-slate-400">⏱️ {alt.prep_time}</span>
                     </div>
                   </div>
 
@@ -305,10 +303,14 @@ export default function FoodAnalysisScreen() {
       <div className="space-y-2 pt-1">
         <button
           onClick={handleConfirmLogScanned}
-          className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-2xl font-black text-xs shadow-lg shadow-emerald-600/30 hover:opacity-95 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+          className={`w-full py-3.5 rounded-2xl font-black text-xs shadow-md transition-all flex items-center justify-center gap-1.5 ${
+            isNotSuitable
+              ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/30'
+              : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-emerald-600/30 hover:opacity-95'
+          }`}
         >
           <Check className="w-4 h-4 stroke-[3]" />
-          <span>Confirm & Log "{food_item.name}" for {selectedSlot.toUpperCase()}</span>
+          <span>{isNotSuitable ? `Log "${food_item.name}" Anyway (Reduces Score)` : `Confirm & Log "${food_item.name}" for ${selectedSlot.toUpperCase()}`}</span>
         </button>
 
         <button

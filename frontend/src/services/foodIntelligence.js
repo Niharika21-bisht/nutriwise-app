@@ -113,6 +113,15 @@ export function validateFoodInput(inputText) {
 export function estimateNutritionalValues(foodName, userProfile) {
   const query = (foodName || "").toLowerCase();
   
+  // Unhealthy Junk / Fried / High-Sugar Keywords
+  const isJunkOrFried = query.includes("samosa") || query.includes("pakora") || query.includes("pakoda") ||
+                        query.includes("kachori") || query.includes("bhatura") || query.includes("poori") || query.includes("puri") ||
+                        query.includes("jalebi") || query.includes("gulab jamun") || query.includes("halwa") ||
+                        query.includes("fries") || query.includes("chips") || query.includes("burger") || query.includes("pizza") ||
+                        query.includes("maggi") || query.includes("noodles") || query.includes("chowmein") ||
+                        query.includes("cake") || query.includes("pastry") || query.includes("soda") || query.includes("cola") ||
+                        query.includes("pepsi") || query.includes("fried");
+
   let calories = 380;
   let protein_g = 14.0;
   let carbs_g = 52.0;
@@ -125,9 +134,9 @@ export function estimateNutritionalValues(foodName, userProfile) {
   let vitamins = ["Vitamin B-Complex", "Iron", "Zinc"];
   let serving_size = "1 standard serving";
 
-  // Check for portion numbers (e.g. "2 rotis", "3 eggs", "2 cups")
+  // Check for portion numbers (e.g. "2 samosas", "2 rotis", "3 eggs")
   let portionMultiplier = 1.0;
-  const numMatch = query.match(/(\d+)\s*(roti|rotis|phulka|phulkas|paratha|parathas|egg|eggs|toast|cup|cups|slice|slices|scoop|scoops|pcs|pieces)?/i);
+  const numMatch = query.match(/(\d+)\s*(samosa|samosas|roti|rotis|phulka|phulkas|paratha|parathas|egg|eggs|toast|cup|cups|slice|slices|scoop|scoops|pcs|pieces)?/i);
   if (numMatch && numMatch[1]) {
     const count = parseInt(numMatch[1], 10);
     if (count >= 2 && count <= 6) {
@@ -135,8 +144,36 @@ export function estimateNutritionalValues(foodName, userProfile) {
     }
   }
 
-  // 1. High-Protein Dishes (Paneer / Tofu / Legumes)
-  if (query.includes("paneer") || query.includes("panner") || query.includes("tofu")) {
+  // 1. SPECIFIC FRIED SNACKS & JUNK FOOD (Samosa, Pakora, Bhature, Fries, Pizza, Burger)
+  if (query.includes("samosa") || query.includes("kachori")) {
+    calories = 520; protein_g = 5.5; carbs_g = 64.0; fat_g = 28.0; fiber_g = 2.0; sugar_g = 3.0; sodium_mg = 680;
+    category = "Deep-Fried Refined Maida Snack";
+    allergens.push("gluten");
+    vitamins = ["Trace Minerals"];
+    serving_size = "2 pieces (approx 180g)";
+  } else if (query.includes("pakora") || query.includes("pakoda") || query.includes("bhajiya")) {
+    calories = 480; protein_g = 7.0; carbs_g = 48.0; fat_g = 30.0; fiber_g = 3.0; sugar_g = 2.0; sodium_mg = 620;
+    category = "Deep-Fried Besan Fritters";
+    serving_size = "1 plate (150g)";
+  } else if (query.includes("bhatura") || query.includes("bhature") || query.includes("puri") || query.includes("poori")) {
+    calories = 590; protein_g = 11.0; carbs_g = 74.0; fat_g = 29.0; fiber_g = 3.0; sugar_g = 4.0; sodium_mg = 720;
+    category = "Deep-Fried Refined Flatbread";
+    allergens.push("gluten");
+  } else if (query.includes("pizza") || query.includes("burger") || query.includes("fries") || query.includes("chips")) {
+    calories = 620; protein_g = 14.0; carbs_g = 78.0; fat_g = 28.0; fiber_g = 2.5; sugar_g = 12.0; sodium_mg = 880;
+    category = "High-Calorie Ultra-Processed Meal";
+    allergens.push("gluten", "dairy");
+  } else if (query.includes("maggi") || query.includes("noodles") || query.includes("chowmein")) {
+    calories = 460; protein_g = 8.0; carbs_g = 68.0; fat_g = 18.0; fiber_g = 2.0; sugar_g = 3.0; sodium_mg = 940;
+    category = "High-Sodium Instant Refined Noodles";
+    allergens.push("gluten");
+  } else if (query.includes("gulab jamun") || query.includes("halwa") || query.includes("jalebi") || query.includes("cake")) {
+    calories = 420; protein_g = 4.0; carbs_g = 68.0; fat_g = 17.0; fiber_g = 1.0; sugar_g = 52.0; sodium_mg = 120;
+    category = "Dense Refined Sugar Confection";
+    allergens.push("dairy");
+  } 
+  // 2. High-Protein Dishes (Paneer / Tofu / Legumes)
+  else if (query.includes("paneer") || query.includes("panner") || query.includes("tofu")) {
     calories = 410; protein_g = 22.0; carbs_g = 34.0; fat_g = 18.0; fiber_g = 4.0; sugar_g = 2.5; sodium_mg = 420;
     category = "High Calcium & Bioavailable Protein";
     allergens.push("dairy");
@@ -154,7 +191,7 @@ export function estimateNutritionalValues(foodName, userProfile) {
     category = "Ultra High-Protein Plant Superfood";
     vitamins = ["Complete Amino Acids", "Isoflavones", "Calcium"];
   } 
-  // 2. Non-Veg & Eggs
+  // 3. Non-Veg & Eggs
   else if (query.includes("egg") || query.includes("omelette") || query.includes("bhurji")) {
     calories = 340; protein_g = 20.0; carbs_g = 24.0; fat_g = 15.0; fiber_g = 2.5; sugar_g = 1.5; sodium_mg = 440;
     category = "High Biological Value Animal Protein";
@@ -169,7 +206,7 @@ export function estimateNutritionalValues(foodName, userProfile) {
     category = "Omega-3 Lean Marine Protein";
     vitamins = ["Omega-3 Fatty Acids", "Iodine", "Vitamin D"];
   }
-  // 3. Indian Breakfasts & Breads
+  // 4. Indian Breakfasts & Breads
   else if (query.includes("poha") || query.includes("upma")) {
     calories = 320; protein_g = 11.5; carbs_g = 52.0; fat_g = 7.5; fiber_g = 4.8; sugar_g = 2.5; sodium_mg = 310;
     category = "Traditional Low-GI Breakfast Grain";
@@ -178,11 +215,11 @@ export function estimateNutritionalValues(foodName, userProfile) {
     calories = 325; protein_g = 15.0; carbs_g = 44.0; fat_g = 8.5; fiber_g = 6.0; sugar_g = 2.0; sodium_mg = 290;
     category = "Fermented / Lentil Savory Crepe";
     vitamins = ["Bioavailable Zinc", "Live Enzymes", "Folate"];
-  } else if (query.includes("paratha") || query.includes("naan") || query.includes("puri") || query.includes("bhatura")) {
-    calories = 490; protein_g = 13.5; carbs_g = 62.0; fat_g = 21.0; fiber_g = 4.0; sugar_g = 3.0; sodium_mg = 460;
-    category = "Energy-Dense Flatbread";
+  } else if (query.includes("paratha")) {
+    calories = 420; protein_g = 14.0; carbs_g = 54.0; fat_g = 16.0; fiber_g = 4.5; sugar_g = 2.0; sodium_mg = 420;
+    category = "Wholesome Stuffed Flatbread";
   }
-  // 4. Healthy Fruits, Veggies & Oats
+  // 5. Fruits & Veggies
   else if (query.includes("fruit") || query.includes("papaya") || query.includes("apple") || query.includes("banana") || query.includes("pomegranate")) {
     calories = 175; protein_g = 3.0; carbs_g = 42.0; fat_g = 0.8; fiber_g = 6.5; sugar_g = 24.0; sodium_mg = 15;
     category = "Fresh Fruit / Antioxidant Rich";
@@ -195,15 +232,6 @@ export function estimateNutritionalValues(foodName, userProfile) {
     calories = 290; protein_g = 12.5; carbs_g = 48.0; fat_g = 6.0; fiber_g = 7.5; sugar_g = 3.0; sodium_mg = 90;
     category = "Beta-Glucan Whole Grain";
     vitamins = ["Beta-Glucan", "Manganese", "Phosphorus"];
-  } 
-  // 5. Fast Food / Junk & Sweets
-  else if (query.includes("pizza") || query.includes("burger") || query.includes("fries") || query.includes("chips") || query.includes("samosa") || query.includes("maggi") || query.includes("noodles") || query.includes("fried")) {
-    calories = 580; protein_g = 12.0; carbs_g = 76.0; fat_g = 26.0; fiber_g = 2.0; sugar_g = 12.0; sodium_mg = 840;
-    category = "High-Calorie Refined / Fried Meal";
-    allergens.push("gluten");
-  } else if (query.includes("gulab jamun") || query.includes("halwa") || query.includes("cake") || query.includes("ice cream") || query.includes("jalebi") || query.includes("chocolate")) {
-    calories = 390; protein_g = 4.5; carbs_g = 62.0; fat_g = 16.0; fiber_g = 1.0; sugar_g = 45.0; sodium_mg = 140;
-    category = "Dense Sugar / Sweet Confection";
   }
 
   // Apply portion multiplier
@@ -213,18 +241,17 @@ export function estimateNutritionalValues(foodName, userProfile) {
   fat_g = Number((fat_g * portionMultiplier).toFixed(1));
   fiber_g = Number((fiber_g * portionMultiplier).toFixed(1));
 
-  const isUnhealthy = query.includes("pizza") || query.includes("burger") || query.includes("chips") || query.includes("samosa") || query.includes("fries") || query.includes("soda") || query.includes("cake");
   const isHighProtein = protein_g >= 16.0;
 
-  let score = isUnhealthy ? 5.0 : (isHighProtein ? 8.8 : 7.8);
-  const verdict = isUnhealthy ? "not_ideal" : (isHighProtein ? "good_fit" : "modify");
-  const badge_label = isUnhealthy ? "High Calorie / Not Ideal" : (isHighProtein ? "Optimal Fit" : "Good Fit with Adjustment");
+  let score = isJunkOrFried ? 3.8 : (isHighProtein ? 8.8 : 7.8);
+  const verdict = isJunkOrFried ? "not_ideal" : (isHighProtein ? "good_fit" : "modify");
+  const badge_label = isJunkOrFried ? "🔴 Not Suitable — High Fat & Refined Flour" : (isHighProtein ? "🟢 Optimal Fit — High Protein" : "🟡 Good Fit with Adjustment");
 
-  let rationale = `AI estimated for "${foodName}": ${calories} kcal and ${protein_g}g protein. `;
-  if (!isUnhealthy) {
-    rationale += `Provides wholesome complex carbohydrates and bioavailable amino acids to nourish muscle recovery without causing sudden glycemic spikes.`;
+  let rationale = `AI estimated for "${foodName}": ${calories} kcal, ${protein_g}g protein, and ${fat_g}g fat. `;
+  if (isJunkOrFried) {
+    rationale += `Contains high amounts of refined maida flour and deep-frying saturated/trans fats with very low protein density. Consuming this causes rapid glucose spikes, fat accumulation, and post-meal lethargy.`;
   } else {
-    rationale += `Contains higher amounts of refined flour, deep-frying oils, or simple sugars, which can lead to rapid energy spikes followed by midday lethargy.`;
+    rationale += `Provides wholesome complex carbohydrates and bioavailable amino acids to nourish muscle recovery without causing sudden glycemic spikes.`;
   }
 
   return {
@@ -247,9 +274,9 @@ export function estimateNutritionalValues(foodName, userProfile) {
     score,
     badge_label,
     rationale,
-    suggestions: isUnhealthy ? [
-      "Consider swapping with a whole-grain, grilled, or lentil-based alternative below to stay aligned with your daily diet target.",
-      "If consuming this dish, pair with raw cucumber slices or low-fat curd to blunt the glucose spike."
+    suggestions: isJunkOrFried ? [
+      "⚠️ Samosas and fried snacks exceed your daily fat & calorie budget. Swap with a high-protein roasted alternative below.",
+      "If eating this, pair with a tall glass of water and raw cucumber salad to blunt the glycemic load."
     ] : [
       "Well-balanced choice! Drink a glass of water to support active nutrient absorption."
     ]
@@ -260,7 +287,6 @@ export function estimateNutritionalValues(foodName, userProfile) {
 export function evaluateDietPlanSuitabilityAndAlternatives(foodItem, targetSlot = 'lunch', dietPlan = null, userProfile = {}) {
   const slot = targetSlot.toLowerCase();
   
-  // Benchmark target calories & protein for each slot
   const slotTargets = {
     breakfast: { calories: 330, protein: 14.0, name: "Breakfast" },
     lunch: { calories: 480, protein: 18.0, name: "Lunch" },
@@ -270,28 +296,37 @@ export function evaluateDietPlanSuitabilityAndAlternatives(foodItem, targetSlot 
 
   const target = slotTargets[slot] || slotTargets.lunch;
   const calDiff = foodItem.calories - target.calories;
-  const proteinDiff = foodItem.protein_g - target.protein;
   const foodNameLower = (foodItem.name || "").toLowerCase();
 
-  const isJunkOrFried = foodNameLower.includes("pizza") || foodNameLower.includes("burger") || foodNameLower.includes("chips") ||
-                        foodNameLower.includes("samosa") || foodNameLower.includes("fries") || foodNameLower.includes("fried") ||
-                        foodNameLower.includes("cake") || foodNameLower.includes("soda") || foodNameLower.includes("cola");
+  const isJunkOrFried = foodNameLower.includes("samosa") || foodNameLower.includes("pakora") || foodNameLower.includes("pakoda") ||
+                        foodNameLower.includes("kachori") || foodNameLower.includes("bhatura") || foodNameLower.includes("bhature") ||
+                        foodNameLower.includes("puri") || foodNameLower.includes("poori") || foodNameLower.includes("jalebi") ||
+                        foodNameLower.includes("gulab jamun") || foodNameLower.includes("halwa") || foodNameLower.includes("fries") ||
+                        foodNameLower.includes("chips") || foodNameLower.includes("burger") || foodNameLower.includes("pizza") ||
+                        foodNameLower.includes("maggi") || foodNameLower.includes("noodles") || foodNameLower.includes("chowmein") ||
+                        foodNameLower.includes("cake") || foodNameLower.includes("pastry") || foodNameLower.includes("soda") ||
+                        foodNameLower.includes("cola") || foodNameLower.includes("pepsi") || foodNameLower.includes("fried");
 
   let suitability = 'suitable';
   let badgeText = '🟢 Suitable & Fits Diet Plan Blueprint';
   let badgeColor = 'text-emerald-800 bg-emerald-100 border-emerald-300';
   let explanation = '';
 
-  if (isJunkOrFried || calDiff > 220 || (calDiff > 140 && foodItem.protein_g < 10)) {
+  if (isJunkOrFried || calDiff > 200 || (calDiff > 120 && foodItem.protein_g < 10)) {
     suitability = 'not_suitable';
-    badgeText = '🔴 Not Suitable for Your Diet Plan';
+    badgeText = '🔴 NOT SUITABLE for Your Diet Plan';
     badgeColor = 'text-rose-800 bg-rose-100 border-rose-300';
-    explanation = `⚠️ "${foodItem.name}" is NOT optimal for your scheduled ${target.name}. It delivers ${foodItem.calories} kcal (exceeding your planned ${target.name} target of ${target.calories} kcal by +${calDiff} kcal) with higher saturated fats/refined carbs and low protein density (${foodItem.protein_g}g vs ${target.protein}g target). Consuming this can cause glucose spikes and exceed your daily calorie budget.`;
-  } else if (Math.abs(calDiff) > 100 || proteinDiff < -4) {
+    
+    if (isJunkOrFried) {
+      explanation = `🚫 "${foodItem.name}" is NOT SUITABLE for your diet plan. Samosas, fried snacks, and junk foods are deep-fried in reused oils and made with refined maida flour. It contains ${foodItem.calories} kcal (exceeding your ${target.name} target by +${Math.max(0, calDiff)} kcal) and high saturated fat (${foodItem.fat_g}g) with poor protein (${foodItem.protein_g}g). This will spike insulin and disrupt your daily nutrition score.`;
+    } else {
+      explanation = `⚠️ "${foodItem.name}" exceeds your scheduled ${target.name} allowance by +${calDiff} kcal while lacking sufficient protein density (${foodItem.protein_g}g vs ${target.protein}g target).`;
+    }
+  } else if (Math.abs(calDiff) > 100 || (target.protein - foodItem.protein_g > 5)) {
     suitability = 'partially_suitable';
     badgeText = '🟡 Partially Suitable (Minor Adjustment Needed)';
     badgeColor = 'text-amber-800 bg-amber-100 border-amber-300';
-    explanation = `⚡ "${foodItem.name}" can fit into your ${target.name} with minor adjustments. It contains ${foodItem.calories} kcal vs your planned ${target.calories} kcal (${calDiff > 0 ? `+${calDiff} kcal` : `${calDiff} kcal`}) and ${foodItem.protein_g}g protein. To keep your daily score optimal, keep remaining meals slightly lighter and add protein.`;
+    explanation = `⚡ "${foodItem.name}" can fit into your ${target.name} with minor adjustments. It contains ${foodItem.calories} kcal vs your planned ${target.calories} kcal (${calDiff > 0 ? `+${calDiff} kcal` : `${calDiff} kcal`}) and ${foodItem.protein_g}g protein. Keep your next meal higher in protein and lower in fats.`;
   } else {
     suitability = 'suitable';
     badgeText = '🟢 Highly Suitable & Perfectly Fits Diet Plan';
@@ -308,7 +343,6 @@ export function evaluateDietPlanSuitabilityAndAlternatives(foodItem, targetSlot 
         protein_g: 16.5,
         carbs_g: 38.0,
         fat_g: 9.0,
-        prep_time: "15 mins",
         local_availability: "🌱 Local Kirana & Dairy Staple",
         why_better: "Saves excess calories while doubling bioavailable protein (+9g). Made with yellow lentils and fresh paneer for steady 4-hour morning energy."
       },
@@ -318,7 +352,6 @@ export function evaluateDietPlanSuitabilityAndAlternatives(foodItem, targetSlot 
         protein_g: 12.5,
         carbs_g: 50.0,
         fat_g: 8.0,
-        prep_time: "15 mins",
         local_availability: "🌱 100% Everyday Indian Staple",
         why_better: "Light, iron-rich, and non-bloating. Adding probiotic curd balances the glycemic response and prevents hunger spikes."
       },
@@ -328,7 +361,6 @@ export function evaluateDietPlanSuitabilityAndAlternatives(foodItem, targetSlot 
         protein_g: 13.5,
         carbs_g: 44.0,
         fat_g: 7.5,
-        prep_time: "10 mins",
         local_availability: "🌱 10-Min Fast Home Cooking",
         why_better: "Chickpea flour is packed with zinc and soluble fiber, offering sustained satiety with zero refined oils."
       }
@@ -340,7 +372,6 @@ export function evaluateDietPlanSuitabilityAndAlternatives(foodItem, targetSlot 
         protein_g: 16.5,
         carbs_g: 78.0,
         fat_g: 10.0,
-        prep_time: "25 mins",
         local_availability: "🌱 Classic Everyday Home Thali",
         why_better: "Complete essential amino acid profile. Pairing toor dal with fresh palak ensures rich iron, fiber, and clean energy without afternoon fatigue."
       },
@@ -350,7 +381,6 @@ export function evaluateDietPlanSuitabilityAndAlternatives(foodItem, targetSlot 
         protein_g: 19.0,
         carbs_g: 80.0,
         fat_g: 9.5,
-        prep_time: "25 mins",
         local_availability: "🌱 High Iron & Folate Powerhouse",
         why_better: "Red kidney beans deliver slow-digesting resistant starch, providing sustained midday focus with 19g of plant protein."
       },
@@ -360,7 +390,6 @@ export function evaluateDietPlanSuitabilityAndAlternatives(foodItem, targetSlot 
         protein_g: 17.5,
         carbs_g: 74.0,
         fat_g: 10.5,
-        prep_time: "20 mins",
         local_availability: "🌱 Rich in Prebiotic Fiber",
         why_better: "White chickpeas provide magnesium and zinc. Whole wheat phulkas prevent insulin spikes compared to refined breads."
       }
@@ -372,9 +401,8 @@ export function evaluateDietPlanSuitabilityAndAlternatives(foodItem, targetSlot 
         protein_g: 8.5,
         carbs_g: 32.0,
         fat_g: 3.0,
-        prep_time: "2 mins",
         local_availability: "🌱 Zero Oil • Ready to Eat",
-        why_better: "Delivers 8.5g protein and active papain enzymes for gut health. Replaces 200+ kcal of fried snacks or sugary biscuits."
+        why_better: "Saves 340+ kcal compared to Samosa, eliminates 25g of trans fats, and provides clean protein and active papain gut enzymes."
       },
       {
         name: "Roasted Fox Nuts (Makhana) with 5 Soaked Badam (Almonds)",
@@ -382,9 +410,8 @@ export function evaluateDietPlanSuitabilityAndAlternatives(foodItem, targetSlot 
         protein_g: 6.5,
         carbs_g: 22.0,
         fat_g: 7.5,
-        prep_time: "5 mins",
         local_availability: "🌱 Magnesium Rich Lotus Seeds",
-        why_better: "Rich in anti-aging flavonoids and heart-healthy magnesium. Calms 4 PM cravings without adding refined sodium."
+        why_better: "Light, crunchy, and packed with heart-healthy magnesium and antioxidants instead of deep-fried refined maida."
       },
       {
         name: "Sprouted Green Moong Chaat with Lemon & Tomatoes",
@@ -392,7 +419,6 @@ export function evaluateDietPlanSuitabilityAndAlternatives(foodItem, targetSlot 
         protein_g: 9.5,
         carbs_g: 28.0,
         fat_g: 2.0,
-        prep_time: "5 mins",
         local_availability: "🌱 Live Enzymes & Bioactive Vitamin C",
         why_better: "Sprouting unlocks active enzymes and doubles Vitamin C bioavailability for glowing skin and metabolic health."
       }
@@ -404,7 +430,6 @@ export function evaluateDietPlanSuitabilityAndAlternatives(foodItem, targetSlot 
         protein_g: 22.5,
         carbs_g: 40.0,
         fat_g: 16.0,
-        prep_time: "18 mins",
         local_availability: "🌱 High Protein • Easy Night Digestion",
         why_better: "Provides 22.5g of nighttime muscle-repair protein with minimal complex carbs, optimizing restful sleep."
       },
@@ -414,7 +439,6 @@ export function evaluateDietPlanSuitabilityAndAlternatives(foodItem, targetSlot 
         protein_g: 21.5,
         carbs_g: 42.0,
         fat_g: 16.0,
-        prep_time: "20 mins",
         local_availability: "🌱 Seasonal Spinach & Fresh Dairy",
         why_better: "Delivers lutein and calcium without heavy cream. Easily digested within 2 hours before bed."
       },
@@ -424,7 +448,6 @@ export function evaluateDietPlanSuitabilityAndAlternatives(foodItem, targetSlot 
         protein_g: 16.5,
         carbs_g: 54.0,
         fat_g: 9.5,
-        prep_time: "20 mins",
         local_availability: "🌱 Ayurvedic Soothing Reset",
         why_better: "The gold-standard Ayurvedic comfort dinner that restores gut flora and prepares your metabolism for the morning."
       }
