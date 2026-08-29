@@ -15,14 +15,19 @@ export default function ScanScreen() {
     setModalOpen(true);
   };
 
-  const handleScanDone = async ({ foodName, scanType, image }) => {
+  const handleScanDone = async ({ foodName, scanType, image, parsedData }) => {
     setModalOpen(false);
     showToast("Analyzing nutritional profile & diet fit... 🧠");
     try {
-      const result = await analyzeScannedFood(foodName, userProfile, {
-        calories: todayLog.consumed_calories,
-        protein_g: todayLog.consumed_protein_g
-      });
+      const result = await analyzeScannedFood(
+        foodName,
+        userProfile,
+        {
+          calories: todayLog.consumed_calories,
+          protein_g: todayLog.consumed_protein_g
+        },
+        parsedData
+      );
       result.scannedImage = image;
       setActiveScanResult(result);
       setCurrentScreen('food_analysis');

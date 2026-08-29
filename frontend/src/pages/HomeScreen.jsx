@@ -27,14 +27,19 @@ export default function HomeScreen() {
     setCameraModalOpen(true);
   };
 
-  const handleScanCompleted = async ({ foodName, scanType, image }) => {
+  const handleScanCompleted = async ({ foodName, scanType, image, parsedData }) => {
     setCameraModalOpen(false);
-    showToast("Analyzing scanned meal... 🧠");
+    showToast("Analyzing scanned meal & nutrition profile... 🧠");
     try {
-      const result = await analyzeScannedFood(foodName, userProfile, {
-        calories: todayLog.consumed_calories,
-        protein_g: todayLog.consumed_protein_g
-      });
+      const result = await analyzeScannedFood(
+        foodName,
+        userProfile,
+        {
+          calories: todayLog.consumed_calories,
+          protein_g: todayLog.consumed_protein_g
+        },
+        parsedData
+      );
       result.scannedImage = image;
       setActiveScanResult(result);
       setCurrentScreen('food_analysis');
