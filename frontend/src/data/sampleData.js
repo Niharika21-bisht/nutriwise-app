@@ -5,6 +5,7 @@ export const DEFAULT_USER_PROFILE = {
   email: "niharika@example.com",
   age: 24,
   gender: "female",
+  profile_image: null, // base64 or avatar string
   user_type: "general", // "general" | "athlete"
   sport: "Running",
   goal: "overall_fitness", // "overall_fitness", "calorie_awareness", "protein_focused", "hydration", "vitamins_minerals", "muscle_strength", "weight_management"
@@ -14,6 +15,14 @@ export const DEFAULT_USER_PROFILE = {
   weight_kg: 59,
   dietary_preference: "vegetarian", // "vegetarian", "non_vegetarian", "vegan", "eggetarian"
   allergies: [], // ["dairy", "nuts", "gluten"]
+  meal_timings: {
+    breakfast: "08:30",
+    lunch: "13:15",
+    snack: "16:30",
+    dinner: "20:00"
+  },
+  notifications_enabled: false,
+  hydration_interval_mins: 90
 };
 
 export const SPORTS_LIST = [
@@ -60,13 +69,17 @@ export const ALLERGY_OPTIONS = [
   { id: "shellfish", label: "Shellfish / Seafood" }
 ];
 
+export const AVATAR_OPTIONS = [
+  "👩‍💼", "🏃‍♀️", "🧘‍♀️", "🥗", "🏋️‍♀️", "🥑", "👩‍💻", "🌿", "🍎", "🚴‍♀️"
+];
+
 export const SAMPLE_SCAN_PRESETS = [
   {
     id: "paneer-sandwich",
     type: "meal",
     name: "Paneer Tikka Sandwich",
     tag: "Plate Scan",
-    image: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+    image: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=500&auto=format&fit=crop&q=60",
     description: "Grilled multigrain sandwich with spiced paneer, mint chutney & bell peppers"
   },
   {
@@ -74,7 +87,7 @@ export const SAMPLE_SCAN_PRESETS = [
     type: "meal",
     name: "Dal Tadka with Steamed Rice & Sabzi",
     tag: "Plate Scan",
-    image: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+    image: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=500&auto=format&fit=crop&q=60",
     description: "Yellow toor dal with steamed basmati rice and roasted spiced vegetables"
   },
   {
@@ -82,15 +95,31 @@ export const SAMPLE_SCAN_PRESETS = [
     type: "meal",
     name: "Mediterranean Greek Salad with Feta",
     tag: "Plate Scan",
-    image: "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+    image: "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=500&auto=format&fit=crop&q=60",
     description: "Cucumbers, cherry tomatoes, kalamata olives, red onion & crumbled feta"
+  },
+  {
+    id: "protein-bar-barcode",
+    type: "barcode",
+    name: "Whey Protein Bar (Barcode: 8901030894012)",
+    tag: "QR / Barcode",
+    image: "https://images.unsplash.com/photo-1622484216298-500b1442c554?w=500&auto=format&fit=crop&q=60",
+    description: "Verified packaged protein bar with 20g whey isolate, zero added sugar"
+  },
+  {
+    id: "oatmilk-qr",
+    type: "barcode",
+    name: "Organic Oat Milk (QR Code: 8901234567890)",
+    tag: "QR / Barcode",
+    image: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=500&auto=format&fit=crop&q=60",
+    description: "Fortified plant-based oat milk with Vitamin D & Calcium"
   },
   {
     id: "protein-bar-label",
     type: "label",
     name: "Whey Crisp High Protein Bar (Packaged Label)",
     tag: "Label OCR",
-    image: "https://images.unsplash.com/photo-1622484216298-500b1442c554?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+    image: "https://images.unsplash.com/photo-1622484216298-500b1442c554?w=500&auto=format&fit=crop&q=60",
     description: "Packaged nutrition facts label showing 20g protein, 2g sugar"
   },
   {
@@ -98,7 +127,7 @@ export const SAMPLE_SCAN_PRESETS = [
     type: "label",
     name: "Classic Salted Potato Chips (Packaged Label)",
     tag: "Label OCR",
-    image: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+    image: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=500&auto=format&fit=crop&q=60",
     description: "Packaged snack food label showing high sodium and saturated fats"
   },
   {
@@ -106,7 +135,7 @@ export const SAMPLE_SCAN_PRESETS = [
     type: "food",
     name: "Seasonal Fruit & Roasted Chana Bowl",
     tag: "Food Item",
-    image: "https://images.unsplash.com/photo-1519996529931-28324d5a630e?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+    image: "https://images.unsplash.com/photo-1519996529931-28324d5a630e?w=500&auto=format&fit=crop&q=60",
     description: "Fresh sliced apples, papaya, pomegranate and roasted chickpeas"
   }
 ];

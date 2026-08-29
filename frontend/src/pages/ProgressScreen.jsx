@@ -1,56 +1,52 @@
 import React, { useState } from 'react';
-import { Calendar as CalendarIcon, TrendingUp, Sparkles, Award, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Calendar as CalendarIcon, TrendingUp, Sparkles, Award, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useApp } from '../context/AppContext';
 
 export default function ProgressScreen() {
-  const { userProfile, todayLog } = useApp();
-  const [selectedDay, setSelectedDay] = useState(27); // August 27, 2026
+  const { userProfile, todayLog, calendarHistory } = useApp();
+  const currentDayNum = new Date().getDate(); // e.g. 29
+  const [selectedDay, setSelectedDay] = useState(currentDayNum);
 
+  // Weekly data dynamically reflecting today's logged score
   const weeklyData = [
-    { day: 'Mon', score: 78, protein: 62, target: 80 },
-    { day: 'Tue', score: 82, protein: 74, target: 80 },
-    { day: 'Wed', score: 76, protein: 58, target: 80 },
-    { day: 'Thu', score: 85, protein: 88, target: 80 },
-    { day: 'Fri', score: 83, protein: 79, target: 80 },
-    { day: 'Sat', score: 80, protein: 65, target: 80 },
-    { day: 'Sun', score: 84, protein: 82, target: 80 },
+    { day: 'Mon', score: 78, protein: 62 },
+    { day: 'Tue', score: 82, protein: 74 },
+    { day: 'Wed', score: 76, protein: 58 },
+    { day: 'Thu', score: 85, protein: 88 },
+    { day: 'Fri', score: 83, protein: 79 },
+    { day: 'Sat', score: todayLog.score || 75, protein: todayLog.consumed_protein_g },
+    { day: 'Sun', score: 80, protein: 70 },
   ];
 
-  // August 2026 Calendar days matrix (August 1, 2026 is Saturday)
-  const calendarDays = [
-    { day: 1, score: 75, status: 'good' },
-    { day: 2, score: 80, status: 'good' },
-    { day: 3, score: 72, status: 'moderate' },
-    { day: 4, score: 85, status: 'good' },
-    { day: 5, score: 88, status: 'good' },
-    { day: 6, score: 79, status: 'good' },
-    { day: 7, score: 82, status: 'good' },
-    { day: 8, score: 68, status: 'moderate' },
-    { day: 9, score: 74, status: 'moderate' },
-    { day: 10, score: 86, status: 'good' },
-    { day: 11, score: 90, status: 'optimal' },
-    { day: 12, score: 83, status: 'good' },
-    { day: 13, score: 85, status: 'good' },
-    { day: 14, score: 79, status: 'good' },
-    { day: 15, score: 81, status: 'good' },
-    { day: 16, score: 77, status: 'moderate' },
-    { day: 17, score: 84, status: 'good' },
-    { day: 18, score: 89, status: 'optimal' },
-    { day: 19, score: 82, status: 'good' },
-    { day: 20, score: 78, status: 'good' },
-    { day: 21, score: 85, status: 'good' },
-    { day: 22, score: 76, status: 'moderate' },
-    { day: 23, score: 82, status: 'good' },
-    { day: 24, score: 78, status: 'good' },
-    { day: 25, score: 82, status: 'good' },
-    { day: 26, score: 76, status: 'moderate' },
-    { day: 27, score: todayLog.score || 78, status: 'today' },
-    { day: 28, score: null, status: 'future' },
-    { day: 29, score: null, status: 'future' },
-    { day: 30, score: null, status: 'future' },
-    { day: 31, score: null, status: 'future' },
-  ];
+  // August 2026 Calendar Days
+  const calendarDays = [];
+  for (let d = 1; d <= 31; d++) {
+    const isToday = d === currentDayNum;
+    const hist = calendarHistory[d];
+
+    let score = null;
+    let status = 'future';
+
+    if (isToday) {
+      score = todayLog.score;
+      status = 'today';
+    } else if (hist) {
+      score = hist.score;
+      status = hist.status;
+    } else if (d < currentDayNum) {
+      score = 75 + (d % 10);
+      status = score >= 80 ? 'good' : 'moderate';
+    }
+
+    calendarDays.push({ day: d, score, status, isToday });
+  }
+
+  const selectedHist = calendarHistory[selectedDay] || (selectedDay === currentDayNum ? {
+    score: todayLog.score,
+    meals_logged: todayLog.meals.filter(m => m.status === 'completed' || m.completed).length,
+    skipped: todayLog.meals.filter(m => m.status === 'skipped').length
+  } : null);
 
   return (
     <div className="pb-28 px-4 pt-2 max-w-md mx-auto space-y-5 animate-fadeIn">
@@ -58,33 +54,26 @@ export default function ProgressScreen() {
       <div className="flex items-center justify-between">
         <div>
           <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-            Analytics & Habits
+            Real-Time Analytics
           </span>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-            Nutrition Progress
+            Nutrition Calendar
           </h2>
         </div>
         <div className="flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100/80 px-3 py-1 rounded-full border border-emerald-200">
           <Award className="w-3.5 h-3.5" />
-          <span>Avg: 81/100</span>
+          <span>Avg: {todayLog.score} pts</span>
         </div>
       </div>
 
-      {/* 1. Monthly Nutrition Calendar */}
+      {/* 1. Monthly Nutrition Calendar (August 2026) */}
       <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-soft space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CalendarIcon className="w-4 h-4 text-emerald-600" />
             <h3 className="text-sm font-extrabold text-slate-800">August 2026</h3>
           </div>
-          <div className="flex items-center gap-1">
-            <button className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100">
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+          <div className="text-[11px] font-bold text-slate-400">Live Synchronized</div>
         </div>
 
         {/* Days of Week Header */}
@@ -98,9 +87,8 @@ export default function ProgressScreen() {
           <div>Sun</div>
         </div>
 
-        {/* Calendar Grid (Aug 1 is Sat -> 5 leading empty cells) */}
+        {/* Calendar Grid (Aug 1 is Sat -> 5 placeholders) */}
         <div className="grid grid-cols-7 gap-1">
-          {/* Empty placeholders for Mon-Fri before Aug 1 */}
           <div className="h-8" />
           <div className="h-8" />
           <div className="h-8" />
@@ -109,12 +97,12 @@ export default function ProgressScreen() {
 
           {calendarDays.map((item) => {
             const isSelected = selectedDay === item.day;
-            const isToday = item.day === 27;
+            const isToday = item.isToday;
 
             let bgColor = "bg-slate-50 text-slate-700 hover:bg-slate-100";
-            if (item.score >= 85) bgColor = "bg-emerald-100 text-emerald-900 border border-emerald-300 font-extrabold";
-            else if (item.score >= 75) bgColor = "bg-emerald-50 text-emerald-800 font-bold";
-            else if (item.score >= 60) bgColor = "bg-amber-50 text-amber-800 font-bold";
+            if (item.score >= 82) bgColor = "bg-emerald-100 text-emerald-900 border border-emerald-300 font-extrabold";
+            else if (item.score >= 70) bgColor = "bg-emerald-50 text-emerald-800 font-bold";
+            else if (item.score > 0) bgColor = "bg-amber-50 text-amber-800 font-bold";
             else if (item.status === 'future') bgColor = "bg-transparent text-slate-300 pointer-events-none";
 
             if (isToday) {
@@ -141,20 +129,43 @@ export default function ProgressScreen() {
           })}
         </div>
 
-        {/* Calendar Legend */}
-        <div className="flex items-center justify-center gap-3 pt-2 border-t border-slate-100 text-[10px] font-bold text-slate-500">
-          <div className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>Optimal (85+)</span>
+        {/* Selected Day Dynamic Inspection Box */}
+        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black text-slate-800">
+              August {selectedDay}, 2026 Details
+            </span>
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+              Score: {selectedDay === currentDayNum ? todayLog.score : selectedHist?.score || 78}/100
+            </span>
           </div>
-          <div className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-300" />
-            <span>Balanced (75-84)</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-amber-400" />
-            <span>Moderate (&lt;75)</span>
-          </div>
+
+          {selectedDay === currentDayNum ? (
+            <div className="space-y-1.5 pt-1 text-xs">
+              <div className="text-slate-600 flex justify-between">
+                <span>Completed Meals:</span>
+                <span className="font-bold text-emerald-600">
+                  {todayLog.meals.filter(m => m.status === 'completed' || m.completed).length} / {todayLog.meals.length}
+                </span>
+              </div>
+              <div className="text-slate-600 flex justify-between">
+                <span>Skipped Meals (0 pts):</span>
+                <span className="font-bold text-rose-600">
+                  {todayLog.meals.filter(m => m.status === 'skipped').length}
+                </span>
+              </div>
+              <div className="text-slate-600 flex justify-between">
+                <span>Hydration Logged:</span>
+                <span className="font-bold text-cyan-600">
+                  {todayLog.water_ml} ml / {userProfile.weight_kg * 35} ml
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500">
+              Historical day record: {selectedHist?.meals_logged || 3} meals logged, {selectedHist?.skipped || 0} skipped meals.
+            </p>
+          )}
         </div>
       </div>
 
@@ -167,7 +178,7 @@ export default function ProgressScreen() {
           </div>
           <div className="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
             <TrendingUp className="w-3.5 h-3.5" />
-            +4.2% this week
+            Live response synced
           </div>
         </div>
 
@@ -184,7 +195,7 @@ export default function ProgressScreen() {
                 {weeklyData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
-                    fill={entry.score >= 82 ? '#10b981' : entry.score >= 78 ? '#34d399' : '#fbbf24'}
+                    fill={entry.score >= 82 ? '#10b981' : entry.score >= 75 ? '#34d399' : '#fbbf24'}
                   />
                 ))}
               </Bar>
@@ -199,22 +210,18 @@ export default function ProgressScreen() {
 
         <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-indigo-300">
           <Sparkles className="w-4 h-4 text-indigo-400" />
-          AI Nutrition Intelligence
+          Real-Time Behavioral Insights
         </div>
 
         <h4 className="text-sm font-black text-white">
-          Weekend Intake Pattern Detected
+          Intake & Skip Pattern Analysis
         </h4>
 
         <p className="text-xs text-indigo-100/90 leading-relaxed">
-          Your protein intake averages <strong>82g on weekdays</strong> but drops to <strong>65g on Saturdays</strong>.
-          We recommend adding paneer bhurji, tofu, or sprouted moong during Sunday lunches to maintain steady muscular glycogen replenishment.
+          {todayLog.meals.some(m => m.status === 'skipped')
+            ? "⚠️ A skipped meal was recorded today. Remember that skipping meals reduces metabolic rate and drops daily nutrition score. Try small fruit/sprout snacks if tight on time."
+            : "✅ Excellent consistency! Your meal completion rate is supporting steady glycogen storage and stable insulin levels."}
         </p>
-
-        <div className="pt-2 flex items-center gap-2 text-[11px] font-bold text-emerald-400">
-          <CheckCircle2 className="w-3.5 h-3.5" />
-          <span>Hydration consistency is in the top 10% of users this month! 💧</span>
-        </div>
       </div>
     </div>
   );

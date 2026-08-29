@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Camera, Tag, Apple, Sparkles, Upload, ArrowRight, Zap } from 'lucide-react';
+import { Camera, Tag, Apple, QrCode, Sparkles, Upload, ArrowRight, Zap } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import CameraModal from '../components/CameraModal';
 import { SAMPLE_SCAN_PRESETS } from '../data/sampleData';
@@ -17,7 +17,7 @@ export default function ScanScreen() {
 
   const handleScanDone = async ({ foodName, scanType, image }) => {
     setModalOpen(false);
-    showToast("Analyzing nutritional profile... 🧠");
+    showToast("Analyzing nutritional profile & diet fit... 🧠");
     try {
       const result = await analyzeScannedFood(foodName, userProfile, {
         calories: todayLog.consumed_calories,
@@ -36,84 +36,108 @@ export default function ScanScreen() {
       {/* Top Header */}
       <div>
         <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-          Visual Intelligence
+          Visual & Barcode Intelligence
         </span>
         <h2 className="text-2xl font-black text-slate-900 tracking-tight">
           What would you like to scan?
         </h2>
         <p className="text-xs text-slate-500 mt-1">
-          Take a photo or upload an image to extract macros, verify nutrition labels, and score fit with your goal.
+          Select a mode to scan plate meals, verify packaged nutrition labels, decode QR/barcodes, or analyze single items.
         </p>
       </div>
 
-      {/* 3 Main Scan Cards */}
-      <div className="space-y-3">
-        {/* Option 1: Scan My Meal */}
+      {/* 4 Main Scan Option Cards */}
+      <div className="space-y-2.5">
+        {/* Option 1: Scan My Meal / Plate */}
         <button
           onClick={() => openScanMode('meal')}
-          className="w-full p-4 rounded-3xl bg-white border border-slate-100 shadow-soft hover:shadow-card hover:border-emerald-300 transition-all text-left flex items-center justify-between group"
+          className="w-full p-3.5 rounded-3xl bg-white border border-slate-100 shadow-soft hover:shadow-card hover:border-emerald-300 transition-all text-left flex items-center justify-between group"
         >
           <div className="flex items-center gap-3.5">
-            <div className="w-13 h-13 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform p-3">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform p-2.5">
               🍽️
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-sm text-slate-800">Scan My Meal / Plate</h3>
+                <h3 className="font-extrabold text-sm text-slate-800">Scan Meal Plate</h3>
                 <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
-                  Multi-Item
+                  Plate Analysis
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Take a photo of your entire plate to estimate calories & portion balance.
+                Take a photo of your entire plate to evaluate portion and macro balance.
               </p>
             </div>
           </div>
           <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
         </button>
 
-        {/* Option 2: Food Label Scanner */}
+        {/* Option 2: QR & Barcode Scanner */}
         <button
-          onClick={() => openScanMode('label')}
-          className="w-full p-4 rounded-3xl bg-white border border-slate-100 shadow-soft hover:shadow-card hover:border-blue-300 transition-all text-left flex items-center justify-between group"
+          onClick={() => openScanMode('barcode')}
+          className="w-full p-3.5 rounded-3xl bg-white border border-slate-100 shadow-soft hover:shadow-card hover:border-amber-300 transition-all text-left flex items-center justify-between group"
         >
           <div className="flex items-center gap-3.5">
-            <div className="w-13 h-13 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform p-3">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform p-2.5">
+              📱
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-sm text-slate-800">Scan QR / Barcode</h3>
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full">
+                  Instant Product
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Scan packaged food barcodes for verified product ingredients.
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
+        </button>
+
+        {/* Option 3: Food Label Scanner (OCR) */}
+        <button
+          onClick={() => openScanMode('label')}
+          className="w-full p-3.5 rounded-3xl bg-white border border-slate-100 shadow-soft hover:shadow-card hover:border-blue-300 transition-all text-left flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform p-2.5">
               🏷️
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-extrabold text-sm text-slate-800">Scan Food Label</h3>
                 <span className="text-[10px] font-bold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-full">
-                  OCR Engine
+                  OCR Table
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Scan packaged food nutrition facts & detect hidden sugars or allergens.
+                Scan packaged nutrition facts table to detect hidden sugars.
               </p>
             </div>
           </div>
           <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
         </button>
 
-        {/* Option 3: Scan Single Food */}
+        {/* Option 4: Scan Single Food Item */}
         <button
           onClick={() => openScanMode('food')}
-          className="w-full p-4 rounded-3xl bg-white border border-slate-100 shadow-soft hover:shadow-card hover:border-amber-300 transition-all text-left flex items-center justify-between group"
+          className="w-full p-3.5 rounded-3xl bg-white border border-slate-100 shadow-soft hover:shadow-card hover:border-teal-300 transition-all text-left flex items-center justify-between group"
         >
           <div className="flex items-center gap-3.5">
-            <div className="w-13 h-13 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform p-3">
+            <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform p-2.5">
               🍎
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-sm text-slate-800">Scan Food Item</h3>
-                <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full">
-                  Instant Look
+                <h3 className="font-extrabold text-sm text-slate-800">Scan Single Food</h3>
+                <span className="text-[10px] font-bold text-teal-700 bg-teal-100/80 px-2 py-0.5 rounded-full">
+                  Single Item
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Identify a fruit, snack, beverage or single dish to check goal suitability.
+                Identify a fruit, snack, beverage or individual dish.
               </p>
             </div>
           </div>
@@ -132,7 +156,7 @@ export default function ScanScreen() {
         </div>
 
         <div className="grid grid-cols-2 gap-2.5">
-          {SAMPLE_SCAN_PRESETS.map((preset) => (
+          {SAMPLE_SCAN_PRESETS.slice(0, 4).map((preset) => (
             <button
               key={preset.id}
               onClick={() => handleScanDone({ foodName: preset.name, scanType: preset.type, image: preset.image })}

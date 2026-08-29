@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle2, AlertTriangle, XCircle, Flame, Dumbbell, Sparkles, Plus, Eye, Share2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, AlertTriangle, XCircle, Flame, Dumbbell, Sparkles, Plus, Eye, ShieldCheck, Check } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import NutritionLabel from '../components/NutritionLabel';
 
 export default function FoodAnalysisScreen() {
-  const { activeScanResult, logCustomScannedMeal, setCurrentScreen, userProfile } = useApp();
+  const { activeScanResult, logCustomScannedMeal, evaluateDietPlanFit, setCurrentScreen, userProfile } = useApp();
   const [showFullLabel, setShowFullLabel] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState('lunch');
+  const [slotModalOpen, setSlotModalOpen] = useState(false);
 
   if (!activeScanResult) {
     return (
@@ -21,7 +23,9 @@ export default function FoodAnalysisScreen() {
     );
   }
 
-  const { food_item, verdict, score, badge_label, macro_fit_summary, rationale, suggestions, health_highlights, scannedImage } = activeScanResult;
+  const { food_item, verdict, score, badge_label, rationale, suggestions, scannedImage } = activeScanResult;
+
+  const currentFitEval = evaluateDietPlanFit(food_item, selectedSlot);
 
   let verdictBg = "bg-emerald-50 border-emerald-200 text-emerald-900";
   let scoreBadgeColor = "bg-emerald-600 text-white";
@@ -36,6 +40,10 @@ export default function FoodAnalysisScreen() {
     scoreBadgeColor = "bg-rose-600 text-white";
     verdictIcon = <XCircle className="w-5 h-5 text-rose-600" />;
   }
+
+  const handleConfirmLog = () => {
+    logCustomScannedMeal(food_item, selectedSlot);
+  };
 
   return (
     <div className="pb-28 px-4 pt-2 max-w-md mx-auto space-y-4 animate-fadeIn">
@@ -121,6 +129,44 @@ export default function FoodAnalysisScreen() {
         </div>
       </div>
 
+      {/* Diet Plan Fit Evaluation Card */}
+      <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-soft space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+            Diet Plan Fit Analysis
+          </span>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${currentFitEval.color}`}>
+            {currentFitEval.badge}
+          </span>
+        </div>
+
+        <p className="text-xs text-slate-700 font-medium leading-relaxed">
+          {currentFitEval.message}
+        </p>
+
+        {/* Slot Selection Pills */}
+        <div className="pt-2 border-t border-slate-100">
+          <span className="text-[11px] font-bold text-slate-500 block mb-1.5">
+            Log this meal for which time slot?
+          </span>
+          <div className="grid grid-cols-4 gap-1.5">
+            {['breakfast', 'lunch', 'snack', 'dinner'].map((slot) => (
+              <button
+                key={slot}
+                onClick={() => setSelectedSlot(slot)}
+                className={`py-2 rounded-xl text-xs font-extrabold capitalize transition-all ${
+                  selectedSlot === slot
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {slot}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Rationale & Actionable Advice */}
       <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-soft space-y-3">
         <div>
@@ -165,14 +211,14 @@ export default function FoodAnalysisScreen() {
         </div>
       </div>
 
-      {/* Action CTA: Log This Meal */}
+      {/* Action CTA: Log This Meal as Final Input */}
       <div className="space-y-2 pt-1">
         <button
-          onClick={() => logCustomScannedMeal(food_item)}
+          onClick={handleConfirmLog}
           className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-extrabold text-sm shadow-lg shadow-emerald-600/30 hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
-          <span>Log This Meal to Today's Dashboard</span>
+          <span>Confirm & Log as My {selectedSlot.toUpperCase()}</span>
         </button>
 
         <button
@@ -180,7 +226,7 @@ export default function FoodAnalysisScreen() {
           className="w-full py-3 px-6 rounded-2xl bg-white border border-slate-200 text-amber-700 font-bold text-xs hover:bg-amber-50 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span>Optimize This In "Make My Meal Better"</span>
+          <span>Optimize in "Make My Meal Better"</span>
         </button>
       </div>
     </div>

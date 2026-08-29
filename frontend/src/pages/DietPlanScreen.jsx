@@ -1,70 +1,31 @@
-import React from 'react';
-import { UtensilsCrossed, Sparkles, RefreshCw, Flame, Dumbbell, Clock, Info, CheckCircle2, ChevronRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { UtensilsCrossed, Sparkles, RefreshCw, Flame, Dumbbell, Clock, Info, CheckCircle2, ShoppingBag, Calendar, ArrowRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import FoodCard from '../components/FoodCard';
 
 export default function DietPlanScreen() {
-  const { userProfile, macroTargets, dietPlan, loadingDietPlan, updateProfile, setCurrentScreen, showToast } = useApp();
+  const { userProfile, macroTargets, dietPlan, loadingDietPlan, updateProfile, showToast } = useApp();
+  const [selectedDayTab, setSelectedDayTab] = useState(1); // 1, 2, 3
 
   const handleRegenerate = () => {
-    showToast("Re-optimizing diet blueprint... 🔄");
-    // Trigger plan refresh with slight variation
+    showToast("Re-optimizing 3-day diet blueprint... 🔄");
     updateProfile({ ...userProfile });
   };
 
-  const meals = dietPlan?.meals || [
+  const daysList = dietPlan?.days || [
     {
-      meal_type: "Breakfast",
-      title: "Spiced Vegetable Poha + Low-Fat Curd",
-      description: "Flattened pressed rice tossed with carrots, green peas, peanuts and turmeric, paired with probiotic curd.",
-      calories: 330,
-      protein_g: 12.5,
-      carbs_g: 50.0,
-      fat_g: 8.0,
-      fiber_g: 5.0,
-      prep_time: "15 mins",
-      ingredients: ["Thick Poha", "Fresh Curd", "Green Peas & Carrots", "Roasted Peanuts", "Curry Leaves"]
-    },
-    {
-      meal_type: "Lunch",
-      title: "Dal Tadka + Steamed Basmati Rice + Paneer Bhurji & Mixed Greens",
-      description: "High-protein midday thali providing complete amino acid profile and steady complex carbohydrates.",
-      calories: 520,
-      protein_g: 26.0,
-      carbs_g: 74.0,
-      fat_g: 13.0,
-      fiber_g: 8.5,
-      prep_time: "25 mins",
-      ingredients: ["Toor Dal Lentils", "Steamed Basmati Rice", "Fresh Paneer (120g)", "Cucumber Salad"]
-    },
-    {
-      meal_type: "Snack",
-      title: "Seasonal Papaya / Apple + Dry Roasted Spiced Chana",
-      description: "Low-glycemic afternoon snack rich in soluble fiber and clean plant protein.",
-      calories: 195,
-      protein_g: 8.0,
-      carbs_g: 34.0,
-      fat_g: 3.0,
-      fiber_g: 6.8,
-      prep_time: "5 mins",
-      ingredients: ["Fresh Apple / Papaya", "Roasted Chickpeas (Chana)", "Chaat Masala"]
-    },
-    {
-      meal_type: "Dinner",
-      title: "Multigrain Rotis (2) + Palak Paneer & Mixed Vegetable Stir-Fry",
-      description: "Light and digestible dinner rich in calcium, iron, and magnesium to facilitate overnight tissue repair.",
-      calories: 440,
-      protein_g: 22.0,
-      carbs_g: 48.0,
-      fat_g: 17.5,
-      fiber_g: 7.5,
-      prep_time: "20 mins",
-      ingredients: ["Multigrain Phulkas (2)", "Baby Spinach Palak Puree", "Paneer Cubes", "Steamed Veggies"]
+      day_number: 1,
+      day_label: "Day 1 (Today)",
+      tagline: "Metabolic Kickstart & Balanced Glycemic Energy",
+      meals: dietPlan?.meals || [],
+      total_calories: 1445,
+      total_protein_g: 68.5,
+      why_this_plan: `Designed for ${userProfile.name} to establish steady insulin balance and sustain ${userProfile.goal?.replace('_', ' ')} goals.`
     }
   ];
 
-  const totalCalories = dietPlan?.total_calories || meals.reduce((a, b) => a + b.calories, 0);
-  const totalProtein = dietPlan?.total_protein_g || Number(meals.reduce((a, b) => a + b.protein_g, 0).toFixed(1));
+  const activeDay = daysList.find(d => d.day_number === selectedDayTab) || daysList[0];
+  const meals = activeDay.meals || [];
 
   return (
     <div className="pb-28 px-4 pt-2 max-w-md mx-auto space-y-5 animate-fadeIn">
@@ -72,10 +33,10 @@ export default function DietPlanScreen() {
       <div className="flex items-center justify-between">
         <div>
           <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-            Personalized Blueprint
+            3-Day Advance Schedule
           </span>
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-            Today's Diet Plan
+            Personalized Diet Plan
           </h2>
         </div>
 
@@ -89,14 +50,32 @@ export default function DietPlanScreen() {
         </button>
       </div>
 
+      {/* 3-Day Tab Switcher */}
+      <div className="bg-slate-100 p-1 rounded-2xl flex">
+        {daysList.map((day) => (
+          <button
+            key={day.day_number}
+            onClick={() => setSelectedDayTab(day.day_number)}
+            className={`flex-1 py-2.5 rounded-xl text-xs font-extrabold transition-all flex flex-col items-center justify-center ${
+              selectedDayTab === day.day_number
+                ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/60'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <span>{day.day_label.split(' ')[0]} {day.day_label.split(' ')[1]}</span>
+            <span className="text-[10px] font-medium opacity-75">{day.day_label.includes('Today') ? 'Today' : day.day_label.includes('Tomorrow') ? 'Tomorrow' : 'Day 3'}</span>
+          </button>
+        ))}
+      </div>
+
       {/* Plan Macro Summary Card */}
       <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-4 rounded-3xl shadow-card flex items-center justify-around">
         <div className="text-center">
           <div className="flex items-center justify-center gap-1 text-[11px] font-semibold text-emerald-100">
             <Flame className="w-3.5 h-3.5" />
-            <span>Total Energy</span>
+            <span>Target Energy</span>
           </div>
-          <div className="text-xl font-black mt-0.5">{totalCalories}</div>
+          <div className="text-xl font-black mt-0.5">{activeDay.total_calories}</div>
           <div className="text-[10px] text-emerald-200 uppercase">kcal / day</div>
         </div>
 
@@ -107,7 +86,7 @@ export default function DietPlanScreen() {
             <Dumbbell className="w-3.5 h-3.5" />
             <span>Target Protein</span>
           </div>
-          <div className="text-xl font-black mt-0.5">{totalProtein}g</div>
+          <div className="text-xl font-black mt-0.5">{activeDay.total_protein_g}g</div>
           <div className="text-[10px] text-emerald-200 uppercase">High Density</div>
         </div>
 
@@ -116,26 +95,26 @@ export default function DietPlanScreen() {
         <div className="text-center">
           <div className="text-[11px] font-semibold text-emerald-100">Meals</div>
           <div className="text-xl font-black mt-0.5">{meals.length}</div>
-          <div className="text-[10px] text-emerald-200 uppercase">Scheduled</div>
+          <div className="text-[10px] text-emerald-200 uppercase">Planned</div>
         </div>
       </div>
 
-      {/* "Why this plan?" Scientific Explanation Banner */}
-      <div className="bg-emerald-50/80 border border-emerald-200/80 p-4 rounded-3xl space-y-2">
+      {/* Day Rationale Banner */}
+      <div className="bg-emerald-50/80 border border-emerald-200/80 p-4 rounded-3xl space-y-1.5">
         <div className="flex items-center gap-2 text-xs font-extrabold text-emerald-900 uppercase tracking-wider">
           <Sparkles className="w-4 h-4 text-emerald-600" />
-          Why this plan fits you?
+          <span>{activeDay.tagline || 'Nutritional Objective'}</span>
         </div>
         <p className="text-xs text-emerald-800 leading-relaxed font-medium">
-          {dietPlan?.why_this_plan ||
-            `Designed specifically for ${userProfile.name} (${userProfile.dietary_preference || 'Vegetarian'}) to maximize your ${userProfile.goal?.replace('_', ' ') || 'overall fitness'} goals. It ensures steady glycogen balance and distributes ${totalProtein}g of high-value protein across waking hours.`}
+          {activeDay.why_this_plan ||
+            `Designed specifically for ${userProfile.name} (${userProfile.dietary_preference || 'Vegetarian'}) to support ${userProfile.goal?.replace('_', ' ') || 'overall fitness'}.`}
         </p>
       </div>
 
       {/* Meal Items Schedule */}
       <div className="space-y-3">
         <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400 block">
-          Meal Breakdown
+          {activeDay.day_label} Schedule
         </span>
 
         {meals.map((meal, index) => (
@@ -154,23 +133,46 @@ export default function DietPlanScreen() {
         ))}
       </div>
 
-      {/* Lifestyle & Hydration Guidelines */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-soft space-y-2.5">
-        <div className="flex items-center gap-2 text-xs font-extrabold text-slate-800">
-          <Info className="w-4 h-4 text-emerald-600" />
-          <span>Dietary Best Practices</span>
+      {/* Advance Grocery & Prep List for 3 Days */}
+      <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-soft space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs font-extrabold text-slate-800">
+            <ShoppingBag className="w-4 h-4 text-emerald-600" />
+            <span>3-Day Advance Grocery Checklist</span>
+          </div>
+          <span className="text-[10px] font-bold text-emerald-600">Smart Prep</span>
         </div>
 
-        <ul className="space-y-2 text-xs text-slate-600">
-          {(dietPlan?.lifestyle_tips || [
-            `Maintain a steady hydration target of ${(macroTargets.target_water_ml / 1000).toFixed(1)}L today.`,
-            "Conclude dinner at least 2.5 hours before sleep to support melatonin release.",
-            "Add a splash of fresh lemon over your greens to maximize non-heme iron absorption."
-          ]).map((tip, i) => (
-            <li key={i} className="flex items-start gap-2">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
-              <span>{tip}</span>
+        <ul className="space-y-1.5 text-xs text-slate-600">
+          {(dietPlan?.advance_grocery_list || [
+            "Thick Poha & Rolled Oats",
+            "Yellow Moong Dal & Red Kidney Beans (Rajma)",
+            "Fresh Artisanal Paneer / Tofu (400g)",
+            "Probiotic Curd (500g)",
+            "Spinach, Bell Peppers, Carrots & Cucumbers",
+            "Dry Roasted Chana & Makhana"
+          ]).map((item, i) => (
+            <li key={i} className="flex items-center gap-2">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+              <span>{item}</span>
             </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Prep Ahead Tips */}
+      <div className="bg-amber-50/70 border border-amber-200/80 p-4 rounded-3xl space-y-2">
+        <div className="flex items-center gap-2 text-xs font-black text-amber-900">
+          <Calendar className="w-4 h-4 text-amber-700" />
+          <span>Advance Meal Preparation Tips</span>
+        </div>
+        <ul className="space-y-1.5 text-xs text-amber-800">
+          {(dietPlan?.advance_prep_tips || [
+            "Soak Rajma (Kidney beans) tonight in water for tomorrow's high-protein lunch.",
+            "Start sprouting green moong beans today for Day 3 live enzyme snack.",
+            "Keep curd refrigerated and set aside multigrain flour for fresh evening rotis."
+          ]).map((tip, i) => (
+            <li key={i}>• {tip}</li>
           ))}
         </ul>
       </div>

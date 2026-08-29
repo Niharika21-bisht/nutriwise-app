@@ -87,80 +87,223 @@ export async function fetchDietPlan(profile) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(profile)
     });
-    if (res.ok) return await res.json();
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.days) return data;
+    }
   } catch (e) {
     // fallback
   }
 
-  // Client-side fallback diet generator
+  // Client-side 3-Day Diet Plan Generator
   const isVeg = profile.dietary_preference !== "non_vegetarian";
   const isVegan = profile.dietary_preference === "vegan";
   const isEggetarian = profile.dietary_preference === "eggetarian";
 
-  const meals = [
+  const day1Meals = [
     {
       meal_type: "Breakfast",
       title: isVegan ? "Organic Rolled Oats with Chia & Berries" : isEggetarian ? "Double Egg Omelette with Whole Wheat Toast" : "Spiced Vegetable Poha + Fresh Curd",
       description: "Rich in complex carbohydrates, natural electrolytes and probiotics for kickstarting daily metabolic rate.",
-      calories: 320,
-      protein_g: isEggetarian ? 18.0 : 12.0,
-      carbs_g: 48.0,
+      calories: 330,
+      protein_g: isEggetarian ? 18.0 : 12.5,
+      carbs_g: 50.0,
       fat_g: 8.0,
-      fiber_g: 5.5,
+      fiber_g: 5.0,
       prep_time: "15 mins",
-      ingredients: ["Poha / Rolled Oats", "Vegetables / Fruits", "Curd / Plant Milk", "Spices"]
+      ingredients: ["Pressed Rice (Poha)", "Fresh Low-fat Curd", "Green Peas & Carrots", "Roasted Peanuts", "Curry leaves"]
     },
     {
       meal_type: "Lunch",
-      title: isVeg ? "Dal Tadka, Steamed Basmati Rice & Paneer Bhurji" : "Grilled Herb Chicken Breast with Quinoa Pilaf & Greens",
-      description: "High-protein midday fuel designed to nourish muscle fibers and maintain steady afternoon blood glucose.",
-      calories: 490,
-      protein_g: isVeg ? 24.0 : 36.0,
-      carbs_g: 68.0,
-      fat_g: 13.0,
-      fiber_g: 8.0,
+      title: isVeg ? "Dal Tadka + Steamed Basmati Rice + Sabzi & Cucumber Salad" : "Grilled Herb Chicken Breast with Quinoa Pilaf & Greens",
+      description: "High-protein midday thali providing complete amino acid profile and steady complex carbohydrates.",
+      calories: 480,
+      protein_g: isVeg ? 16.0 : 36.0,
+      carbs_g: 78.0,
+      fat_g: 11.5,
+      fiber_g: 8.2,
       prep_time: "25 mins",
-      ingredients: ["Dal / Chicken", "Basmati Rice / Quinoa", "Stir-fried vegetables", "Fresh Salad"]
+      ingredients: ["Toor Dal (Lentils)", "Steamed Rice", "Green Beans & Carrots", "Desi Ghee tempering", "Kachumber Salad"]
     },
     {
       meal_type: "Snack",
       title: "Seasonal Fruit Bowl + Dry Roasted Chana",
       description: "Crunchy, high-fiber, low-glycemic boost preventing 4 PM energy dips without processed sugars.",
-      calories: 190,
-      protein_g: 8.5,
-      carbs_g: 32.0,
+      calories: 195,
+      protein_g: 8.0,
+      carbs_g: 34.0,
       fat_g: 3.0,
-      fiber_g: 7.0,
+      fiber_g: 6.8,
       prep_time: "5 mins",
-      ingredients: ["Apple / Papaya", "Roasted Chana", "Chaat Masala", "Green Tea"]
+      ingredients: ["Crisp Apple / Papaya slices", "Dry Roasted Chana", "Chaat Masala", "Green Tea"]
     },
     {
       meal_type: "Dinner",
-      title: isVeg ? "Multigrain Rotis (2) + Palak Paneer & Mixed Salad" : "Pan-Seared Fish Fillet with Asparagus & Sweet Potato Mash",
+      title: isVeg ? "Multigrain Rotis (2) + Paneer Bhurji & Mixed Vegetables" : "Pan-Seared Salmon / Fish with Asparagus & Sweet Potato Mash",
       description: "Light on digestion, packed with essential minerals (calcium, iron, magnesium) for nighttime cellular repair.",
-      calories: 430,
-      protein_g: isVeg ? 22.0 : 32.0,
-      carbs_g: 46.0,
-      fat_g: 15.0,
-      fiber_g: 7.2,
+      calories: 440,
+      protein_g: isVeg ? 22.0 : 34.0,
+      carbs_g: 48.0,
+      fat_g: 17.5,
+      fiber_g: 7.5,
       prep_time: "20 mins",
-      ingredients: ["Multigrain Flour / Fish", "Spinach / Asparagus", "Paneer / Mash", "Salad"]
+      ingredients: ["Fresh Cottage Cheese / Paneer", "Multigrain Phulkas (2)", "Mixed Veggies", "Olive Oil / Ghee"]
+    }
+  ];
+
+  const day2Meals = [
+    {
+      meal_type: "Breakfast",
+      title: isVegan ? "Sprouted Moong & Vegetable Upma" : isEggetarian ? "Boiled Eggs (2) + Avocado Sourdough Toast" : "Moong Dal Cheela with Mint Curd Chutney",
+      description: "High-protein lentil savory crepe packed with grated veggies and gut-healthy mint dip.",
+      calories: 340,
+      protein_g: isEggetarian ? 19.0 : 16.0,
+      carbs_g: 44.0,
+      fat_g: 9.0,
+      fiber_g: 6.5,
+      prep_time: "18 mins",
+      ingredients: ["Yellow Moong Dal batter", "Grated Paneer/Tofu", "Spinach & Coriander", "Mint Chutney"]
+    },
+    {
+      meal_type: "Lunch",
+      title: isVeg ? "Rajma Masala with Brown Rice & Beetroot Raita" : "Lemon Garlic Chicken Bowl with Brown Rice & Broccoli",
+      description: "Slow-digesting kidney beans rich in folate, iron, and prebiotic fibers for all-day focus.",
+      calories: 510,
+      protein_g: isVeg ? 19.5 : 38.0,
+      carbs_g: 76.0,
+      fat_g: 11.0,
+      fiber_g: 10.5,
+      prep_time: "30 mins",
+      ingredients: ["Red Kidney Beans (Rajma)", "Steamed Brown Rice", "Beetroot Curd Raita", "Onion & Tomato Gravy"]
+    },
+    {
+      meal_type: "Snack",
+      title: "Spiced Roasted Makhana + Handful of Soaked Almonds & Walnuts",
+      description: "Magnesium-dense fox nuts and omega-3 rich walnuts to fuel cognitive energy.",
+      calories: 180,
+      protein_g: 6.0,
+      carbs_g: 22.0,
+      fat_g: 8.5,
+      fiber_g: 4.5,
+      prep_time: "5 mins",
+      ingredients: ["Roasted Fox Nuts (Makhana)", "Soaked Almonds (5 pcs)", "Walnut halves (2 pcs)", "Pink salt"]
+    },
+    {
+      meal_type: "Dinner",
+      title: isVeg ? "Tofu / Paneer Tikka Stir-fry with 2 Multigrain Rotis & Palak Soup" : "Grilled Fish Fillet with Sauteed Zucchini & Quinoa",
+      description: "Thermogenic light dinner high in lean protein to promote active metabolic recovery during sleep.",
+      calories: 420,
+      protein_g: isVeg ? 24.0 : 32.0,
+      carbs_g: 42.0,
+      fat_g: 14.0,
+      fiber_g: 8.0,
+      prep_time: "22 mins",
+      ingredients: ["Marinated Paneer/Tofu (140g)", "Bell peppers & Onions", "Multigrain Rotis", "Warm Palak soup"]
+    }
+  ];
+
+  const day3Meals = [
+    {
+      meal_type: "Breakfast",
+      title: isVegan ? "Chia Seed Coconut Pudding with Mango & Flax" : isEggetarian ? "Egg Bhurji (Scrambled) with 2 Multigrain Toasts" : "Besan Cheela Loaded with Cottage Cheese & Veggies",
+      description: "Wholesome chickpea flour pancakes bursting with bioavailable protein and essential zinc.",
+      calories: 325,
+      protein_g: isEggetarian ? 18.5 : 15.0,
+      carbs_g: 42.0,
+      fat_g: 9.5,
+      fiber_g: 6.0,
+      prep_time: "15 mins",
+      ingredients: ["Gram flour (Besan)", "Crumbled Paneer", "Finely chopped bell peppers", "Ajwain & Turmeric"]
+    },
+    {
+      meal_type: "Lunch",
+      title: isVeg ? "Chole (Chickpeas) with Quinoa Pilaf & Cucumber Salad" : "Tandoori Chicken Salad Bowl with Avocado dressing",
+      description: "Hearty Mediterranean/Desi legume bowl rich in plant sterols and clean low-GI carbohydrates.",
+      calories: 490,
+      protein_g: isVeg ? 18.0 : 35.0,
+      carbs_g: 72.0,
+      fat_g: 12.0,
+      fiber_g: 9.5,
+      prep_time: "25 mins",
+      ingredients: ["Boiled Kabuli Chana", "Steamed Quinoa/Rice", "Spiced Tomato Gravy", "Cucumber Onion Salad"]
+    },
+    {
+      meal_type: "Snack",
+      title: "Mixed Sprout Salad (Moong + Kala Chana) with Lemon Dressing",
+      description: "Enzyme-active sprouted micro-legumes delivering live Vitamin C and prebiotic fiber.",
+      calories: 175,
+      protein_g: 9.5,
+      carbs_g: 28.0,
+      fat_g: 2.0,
+      fiber_g: 7.2,
+      prep_time: "5 mins",
+      ingredients: ["Sprouted Green Moong", "Sprouted Black Chana", "Fresh Lemon juice", "Chaat masala"]
+    },
+    {
+      meal_type: "Dinner",
+      title: isVeg ? "Lauki Kofta (Baked) / Soya Chunk Curry with 2 Rotis & Salad" : "Chicken Clear Soup with Steamed Dumplings & Greens",
+      description: "Easily assimilated gentle meal ensuring deep restful REM sleep and hydration retention.",
+      calories: 410,
+      protein_g: isVeg ? 22.5 : 30.0,
+      carbs_g: 46.0,
+      fat_g: 12.5,
+      fiber_g: 8.0,
+      prep_time: "20 mins",
+      ingredients: ["Nutri Soya Chunks / Bottle Gourd", "Multigrain Rotis (2)", "Tomato Curry", "Fresh Green Salad"]
     }
   ];
 
   return {
-    plan_title: `Personalized ${profile.goal?.replace('_', ' ')?.toUpperCase() || 'FITNESS'} Blueprint`,
+    plan_title: `Personalized ${profile.goal?.replace('_', ' ')?.toUpperCase() || 'FITNESS'} 3-Day Blueprint`,
     target_summary: calculateClientTargets(profile),
-    meals,
-    total_calories: meals.reduce((sum, m) => sum + m.calories, 0),
-    total_protein_g: Number(meals.reduce((sum, m) => sum + m.protein_g, 0).toFixed(1)),
-    total_carbs_g: Number(meals.reduce((sum, m) => sum + m.carbs_g, 0).toFixed(1)),
-    total_fat_g: Number(meals.reduce((sum, m) => sum + m.fat_g, 0).toFixed(1)),
-    why_this_plan: `Tailored specifically for ${profile.name || 'you'} to excel in your ${profile.goal?.replace('_', ' ') || 'overall fitness'} goal. It optimizes nutrient timing with adequate protein distribution across waking hours.`,
-    lifestyle_tips: [
-      `Maintain a steady hydration target of ${(profile.weight_kg * 35 / 1000).toFixed(1)}L today.`,
-      "Conclude dinner at least 2.5 hours before sleep to support melatonin release.",
-      "Add a splash of fresh lemon over your greens to maximize non-heme iron absorption."
+    days: [
+      {
+        day_number: 1,
+        day_label: "Day 1 (Today)",
+        tagline: "Metabolic Kickstart & Balanced Glycemic Energy",
+        meals: day1Meals,
+        total_calories: day1Meals.reduce((s, m) => s + m.calories, 0),
+        total_protein_g: Number(day1Meals.reduce((s, m) => s + m.protein_g, 0).toFixed(1)),
+        total_carbs_g: Number(day1Meals.reduce((s, m) => s + m.carbs_g, 0).toFixed(1)),
+        total_fat_g: Number(day1Meals.reduce((s, m) => s + m.fat_g, 0).toFixed(1)),
+        why_this_plan: `Designed for ${profile.name || 'you'} to establish steady insulin balance and sustain ${profile.goal?.replace('_', ' ') || 'overall fitness'} through whole grains and protein timing.`
+      },
+      {
+        day_number: 2,
+        day_label: "Day 2 (Tomorrow)",
+        tagline: "Endurance Fuel & High Legume Micronutrients",
+        meals: day2Meals,
+        total_calories: day2Meals.reduce((s, m) => s + m.calories, 0),
+        total_protein_g: Number(day2Meals.reduce((s, m) => s + m.protein_g, 0).toFixed(1)),
+        total_carbs_g: Number(day2Meals.reduce((s, m) => s + m.carbs_g, 0).toFixed(1)),
+        total_fat_g: Number(day2Meals.reduce((s, m) => s + m.fat_g, 0).toFixed(1)),
+        why_this_plan: `Focuses on iron-rich legumes (Rajma & Moong) paired with healthy monounsaturated nuts for cellular vitality.`
+      },
+      {
+        day_number: 3,
+        day_label: "Day 3 (Day After Tomorrow)",
+        tagline: "Active Recovery & Plant-Powered Satiety",
+        meals: day3Meals,
+        total_calories: day3Meals.reduce((s, m) => s + m.calories, 0),
+        total_protein_g: Number(day3Meals.reduce((s, m) => s + m.protein_g, 0).toFixed(1)),
+        total_carbs_g: Number(day3Meals.reduce((s, m) => s + m.carbs_g, 0).toFixed(1)),
+        total_fat_g: Number(day3Meals.reduce((s, m) => s + m.fat_g, 0).toFixed(1)),
+        why_this_plan: `Integrates sprouted live enzymes and chickpea complex carbs to support gut flora and muscle glycogen replenishment.`
+      }
+    ],
+    advance_grocery_list: [
+      "Thick Poha (Pressed rice) & Rolled Oats",
+      "Yellow Moong Dal & Red Kidney Beans (Rajma)",
+      "Fresh Artisanal Paneer / Organic Tofu (400g)",
+      "Low-fat Probiotic Curd (500g)",
+      "Green Peas, Carrots, Spinach, Bell Peppers & Cucumbers",
+      "Dry Roasted Chana & Fox Nuts (Makhana)",
+      "Raw Almonds & Walnuts"
+    ],
+    advance_prep_tips: [
+      "Soak Rajma (Kidney beans) tonight in water for tomorrow's high-protein lunch.",
+      "Start sprouting green moong beans today for Day 3 live enzyme snack.",
+      "Keep curd refrigerated and set aside multigrain flour for fresh evening rotis."
     ]
   };
 }
@@ -184,12 +327,13 @@ export async function analyzeScannedFood(foodName, userProfile, todayConsumed) {
 
   // Client-side fallback analysis
   const name = foodName || "Paneer Tikka Sandwich";
-  const isHealthy = !name.toLowerCase().includes("chips") && !name.toLowerCase().includes("soda");
+  const lowerName = name.toLowerCase();
+  const isHealthy = !lowerName.includes("chips") && !lowerName.includes("soda") && !lowerName.includes("pizza") && !lowerName.includes("burger");
   
   return {
     food_item: {
       name: name,
-      category: "Identified Meal / Food Item",
+      category: lowerName.includes("barcode") ? "Verified Packaged Good" : "Identified Meal / Food Item",
       serving_size: "1 standard serving (220g)",
       calories: isHealthy ? 385 : 540,
       protein_g: isHealthy ? 18.5 : 4.0,

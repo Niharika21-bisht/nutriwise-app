@@ -1,23 +1,33 @@
 import React from 'react';
-import { Leaf, Sparkles, Smartphone, Monitor, ChevronLeft, RotateCcw } from 'lucide-react';
+import { Leaf, Sparkles, Smartphone, Monitor, ChevronLeft, RotateCcw, LogOut, Bell } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export default function Navbar() {
-  const { currentScreen, setCurrentScreen, viewportMode, setViewportMode, resetTodayLog } = useApp();
+  const { currentScreen, setCurrentScreen, viewportMode, setViewportMode, resetTodayLog, userProfile, isLoggedIn, logout } = useApp();
 
   const isStandalone = ['welcome', 'auth', 'questionnaire', 'profile_created'].includes(currentScreen);
 
   const screenTitles = {
     home: 'NutriWise',
     profile: 'My Profile',
-    diet_plan: 'Personalized Diet Plan',
-    progress: 'Nutrition Progress',
-    scan: 'Food & Meal Scanner',
+    diet_plan: '3-Day Diet Plan',
+    progress: 'Nutrition Calendar',
+    scan: 'Food & Barcode Scanner',
     food_analysis: 'Nutritional Breakdown',
     make_meal_better: 'Make My Meal Better',
     auth: 'Welcome to NutriWise',
     questionnaire: 'Personalization Wizard',
     profile_created: 'Profile Created'
+  };
+
+  const renderNavAvatar = () => {
+    if (userProfile.profile_image) {
+      if (userProfile.profile_image.startsWith('data:image') || userProfile.profile_image.startsWith('http')) {
+        return <img src={userProfile.profile_image} alt="User" className="w-full h-full object-cover" />;
+      }
+      return <span className="text-xs">{userProfile.profile_image}</span>;
+    }
+    return <span className="text-[10px] font-black">{userProfile.name ? userProfile.name[0].toUpperCase() : 'N'}</span>;
   };
 
   return (
@@ -82,14 +92,14 @@ export default function Navbar() {
             )}
           </button>
 
-          {/* Reset Demo State Button */}
-          {currentScreen === 'home' && (
+          {/* User Profile Mini Avatar Link */}
+          {!isStandalone && (
             <button
-              onClick={resetTodayLog}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-              title="Reset today's test logs"
+              onClick={() => setCurrentScreen('profile')}
+              className="w-7 h-7 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center overflow-hidden border border-emerald-300 shadow-sm"
+              title="Go to Profile"
             >
-              <RotateCcw className="w-4 h-4" />
+              {renderNavAvatar()}
             </button>
           )}
         </div>
