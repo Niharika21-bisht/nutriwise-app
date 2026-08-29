@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle2, AlertTriangle, XCircle, Flame, Dumbbell, Sparkles, Plus, Eye, ShieldCheck, Check } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, AlertTriangle, XCircle, Flame, Dumbbell, Sparkles, Plus, Eye, ShieldCheck, Ban, RefreshCw, Camera } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import NutritionLabel from '../components/NutritionLabel';
 
@@ -7,7 +7,6 @@ export default function FoodAnalysisScreen() {
   const { activeScanResult, logCustomScannedMeal, evaluateDietPlanFit, setCurrentScreen, userProfile } = useApp();
   const [showFullLabel, setShowFullLabel] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState('lunch');
-  const [slotModalOpen, setSlotModalOpen] = useState(false);
 
   if (!activeScanResult) {
     return (
@@ -19,6 +18,56 @@ export default function FoodAnalysisScreen() {
         >
           Back to Scanner
         </button>
+      </div>
+    );
+  }
+
+  // 1. NON-FOOD OR REJECTED SCAN HANDLER
+  if (activeScanResult.is_valid_food === false || activeScanResult.verdict === 'invalid') {
+    return (
+      <div className="pb-28 px-4 pt-2 max-w-md mx-auto space-y-4 animate-fadeIn">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setCurrentScreen('scan')}
+            className="p-2 -ml-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 flex items-center gap-1 text-xs font-bold"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Scanner</span>
+          </button>
+          <span className="text-xs font-extrabold uppercase tracking-wider text-rose-500">
+            Unrecognized Item
+          </span>
+        </div>
+
+        <div className="bg-white rounded-3xl overflow-hidden border border-rose-200 shadow-soft p-5 text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+            <Ban className="w-8 h-8" />
+          </div>
+
+          <div>
+            <h3 className="text-lg font-black text-slate-900">No Food Item Detected</h3>
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              {activeScanResult.error_message || "The camera could not recognize an edible food plate, dish, or packaged nutrition label in this image."}
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-left space-y-1.5 text-xs text-amber-900">
+            <span className="font-bold block">💡 How to scan food accurately:</span>
+            <ul className="space-y-1 text-[11px] text-amber-800 list-disc list-inside">
+              <li>Place your meal plate in good lighting.</li>
+              <li>Point camera directly at the food (avoid faces, walls, laptops).</li>
+              <li>For packaged foods, align the barcode or Nutrition Facts table.</li>
+            </ul>
+          </div>
+
+          <button
+            onClick={() => setCurrentScreen('scan')}
+            className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-extrabold text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2"
+          >
+            <Camera className="w-4 h-4" />
+            <span>Take New Food Photo</span>
+          </button>
+        </div>
       </div>
     );
   }
@@ -178,7 +227,6 @@ export default function FoodAnalysisScreen() {
           </p>
         </div>
 
-        {/* Suggestions & Upgrades */}
         <div className="pt-2 border-t border-slate-100 space-y-2">
           <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-700 block">
             💡 Recommended Improvement

@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Camera, Upload, X, QrCode, Tag, Apple, Zap, Sparkles, CheckCircle2, RefreshCw, FlipHorizontal, AlertTriangle, AlertCircle, ScanLine, Eye } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Camera, Upload, X, QrCode, Tag, Apple, Zap, Sparkles, CheckCircle2, RefreshCw, FlipHorizontal, AlertTriangle, AlertCircle, ScanLine, Utensils, Ban } from 'lucide-react';
 import { SAMPLE_SCAN_PRESETS } from '../data/sampleData';
-import { lookupBarcodeProduct, parseNutritionLabelOcr, verifyFoodImageQuality } from '../services/visionScanner';
+import { lookupBarcodeProduct, parseNutritionLabelOcr } from '../services/visionScanner';
+import { classifyFoodImage } from '../services/mlFoodClassifier';
 
 export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMode = 'meal' }) {
   const [activeTab, setActiveTab] = useState(defaultMode); // 'meal', 'barcode', 'label', 'food'
@@ -11,7 +12,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
   const [capturedPhoto, setCapturedPhoto] = useState(null);
   const [detectedProduct, setDetectedProduct] = useState(null);
   const [customFoodTitle, setCustomFoodTitle] = useState("");
-  const [validationWarning, setValidationWarning] = useState(null);
+  const [nonFoodError, setNonFoodError] = useState(null);
   
   const [scanning, setScanning] = useState(false);
   const [scanStep, setScanStep] = useState("");
@@ -26,7 +27,6 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
     setActiveTab(defaultMode);
   }, [defaultMode]);
 
-  // Start / Stop camera when Modal opens or closes
   useEffect(() => {
     if (isOpen) {
       startCamera();
@@ -43,7 +43,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
     setCapturedPhoto(null);
     setDetectedProduct(null);
     setCustomFoodTitle("");
-    setValidationWarning(null);
+    setNonFoodError(null);
     setScanning(false);
     setCameraError(null);
   };
@@ -75,7 +75,6 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
 
       let stream = null;
       try {
-        // Try requested facingMode
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: { ideal: facingMode },
@@ -85,8 +84,6 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
           audio: false
         });
       } catch (e1) {
-        console.warn("Facing mode constraint failed, trying basic video:", e1);
-        // Fallback to any basic video device
         stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       }
 
@@ -94,11 +91,9 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        // Explicitly call play
         try {
           await videoRef.current.play();
         } catch (playErr) {
-          console.warn("Auto-play was prevented, setting onloadedmetadata:", playErr);
           videoRef.current.onloadedmetadata = () => {
             videoRef.current.play().catch(() => {});
           };
@@ -108,24 +103,17 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
       setCameraActive(true);
       setCameraError(null);
 
-      // Start live barcode detector if in barcode tab
       if (activeTab === 'barcode') {
         startLiveBarcodeDetection();
       }
     } catch (err) {
       console.error("Camera access error:", err);
       setCameraActive(false);
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setCameraError("Camera permission was denied. Please click the camera icon in your browser address bar to allow access.");
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        setCameraError("No webcam found on this device. Please upload an image instead.");
-      } else {
-        setCameraError("Could not access webcam. Please make sure no other app is using it.");
-      }
+      setCameraError("Could not access webcam. Please check browser permissions or upload an image.");
     }
   };
 
-  // Live Barcode Detection Loop (using native BarcodeDetector API if available)
+  // Live Barcode Detection Loop
   const startLiveBarcodeDetection = () => {
     if (barcodeIntervalRef.current) clearInterval(barcodeIntervalRef.current);
 
@@ -150,7 +138,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
           } catch (e) {}
         }, 300);
       } catch (err) {
-        console.warn("BarcodeDetector initialization failed:", err);
+        console.warn("BarcodeDetector error:", err);
       }
     }
   };
@@ -167,7 +155,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
   const handleBarcodeDetected = async (barcodeText) => {
     takeSnapshot();
     setScanning(true);
-    setScanStep(`Decoded Barcode: [${barcodeText}] — Fetching Open Food Facts data...`);
+    setScanStep(`Decoded Barcode: [${barcodeText}] — Querying Open Food Facts database...`);
 
     const product = await lookupBarcodeProduct(barcodeText);
     setScanning(false);
@@ -179,7 +167,6 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
     setFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
   };
 
-  // Capture real snapshot from video to canvas
   const takeSnapshot = () => {
     if (!videoRef.current) return null;
     const video = videoRef.current;
@@ -193,57 +180,69 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
 
     const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
     setCapturedPhoto(dataUrl);
-
-    // Food Quality / Non-Food Verification Check
-    const quality = verifyFoodImageQuality(canvas);
-    if (!quality.isFood) {
-      setValidationWarning(quality.reason);
-    } else {
-      setValidationWarning(null);
-    }
-
-    return { dataUrl, quality };
+    return { dataUrl, canvas };
   };
 
+  // Real ML Food Classification Trigger
   const handleCaptureButtonClick = async () => {
+    setNonFoodError(null);
     const snap = takeSnapshot();
     if (!snap) return;
 
-    const { dataUrl, quality } = snap;
+    const { dataUrl, canvas } = snap;
 
-    // Label OCR mode
+    // 1. Label OCR Mode
     if (activeTab === 'label') {
       setScanning(true);
       setScanStep("Running Tesseract OCR on Nutrition Facts label...");
       const ocrResult = await parseNutritionLabelOcr(dataUrl);
       setScanning(false);
 
-      if (ocrResult.success && ocrResult.extracted) {
+      if (ocrResult.success && ocrResult.hasNutritionKeywords && ocrResult.extracted) {
         setDetectedProduct({
-          product_name: "Nutrition Label (OCR Verified)",
-          calories: ocrResult.extracted.calories,
-          protein_g: ocrResult.extracted.protein_g,
-          carbs_g: ocrResult.extracted.carbs_g,
-          fat_g: ocrResult.extracted.fat_g,
-          fiber_g: ocrResult.extracted.fiber_g,
-          sugar_g: ocrResult.extracted.sugar_g,
-          sodium_mg: ocrResult.extracted.sodium_mg,
+          product_name: "Nutrition Facts Food Label",
+          ...ocrResult.extracted,
           serving_size: "1 portion (OCR parsed)"
         });
         setCustomFoodTitle("Nutrition Facts Food Label");
+      } else {
+        setNonFoodError("🚫 No Nutrition Label Detected: Could not detect a valid Nutrition Facts table. Please frame the nutrition panel on the back of the packet.");
       }
-    } else if (activeTab === 'barcode') {
-      // Manual barcode trigger if not auto-detected
-      handleBarcodeDetected("8901030894012");
-    } else {
-      // Plate or Food item mode
-      let initialName = "Home Meal Plate";
-      if (quality.dominantHue === 'green_vegetable') initialName = "Green Salad & Steamed Veg Bowl";
-      else if (quality.dominantHue === 'grain_curry_bread') initialName = "Dal Curry with Roti & Rice";
-      else if (quality.dominantHue === 'fruit_red') initialName = "Fresh Mixed Fruit Bowl";
-      else if (quality.dominantHue === 'rice_dairy_paneer') initialName = "Paneer Curry with Steamed Rice";
+    } 
+    // 2. Barcode Mode
+    else if (activeTab === 'barcode') {
+      if ('BarcodeDetector' in window) {
+        setScanning(true);
+        setScanStep("Searching frame for barcodes...");
+        try {
+          const detector = new window.BarcodeDetector({ formats: ['qr_code', 'ean_13', 'upc_a', 'code_128'] });
+          const codes = await detector.detect(canvas);
+          setScanning(false);
+          if (codes && codes.length > 0) {
+            handleBarcodeDetected(codes[0].rawValue);
+            return;
+          }
+        } catch (e) {}
+        setScanning(false);
+      }
+      setNonFoodError("🚫 No Barcode or QR Code Detected: Please align a valid packaged food barcode inside the frame.");
+    } 
+    // 3. Plate & Food Item Mode: Run Real TensorFlow.js ML Classification
+    else {
+      setScanning(true);
+      setScanStep("Running Machine Learning food & non-food classification...");
       
-      setCustomFoodTitle(initialName);
+      const mlResult = await classifyFoodImage(canvas);
+      setScanning(false);
+
+      if (!mlResult.is_valid_food) {
+        // Strict Rejection for human faces, pets, walls, furniture, devices!
+        setNonFoodError(mlResult.error_message || "🚫 No Food Detected in camera frame. Please point towards your meal plate or food dish.");
+      } else {
+        // Valid Food Classified!
+        setDetectedProduct(mlResult.food_data);
+        setCustomFoodTitle(mlResult.detected_title || mlResult.food_data.name);
+      }
     }
   };
 
@@ -254,21 +253,40 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
       reader.onload = async (event) => {
         const dataUrl = event.target.result;
         setCapturedPhoto(dataUrl);
+        setNonFoodError(null);
 
-        if (activeTab === 'label') {
-          setScanning(true);
-          setScanStep("Running Tesseract OCR on uploaded label...");
-          const ocrResult = await parseNutritionLabelOcr(dataUrl);
-          setScanning(false);
-          if (ocrResult.extracted) {
-            setDetectedProduct({
-              product_name: "Uploaded Nutrition Label",
-              ...ocrResult.extracted,
-              serving_size: "1 serving"
-            });
+        const img = new Image();
+        img.onload = async () => {
+          if (activeTab === 'label') {
+            setScanning(true);
+            setScanStep("Running OCR on nutrition label...");
+            const ocrResult = await parseNutritionLabelOcr(dataUrl);
+            setScanning(false);
+            if (ocrResult.hasNutritionKeywords && ocrResult.extracted) {
+              setDetectedProduct({
+                product_name: "Uploaded Nutrition Label",
+                ...ocrResult.extracted,
+                serving_size: "1 portion"
+              });
+              setCustomFoodTitle("Nutrition Facts Food Label");
+            } else {
+              setNonFoodError("🚫 No Nutrition Label Detected in this photo. Please upload a clear image of a nutrition facts table.");
+            }
+          } else {
+            setScanning(true);
+            setScanStep("Classifying image with ML vision...");
+            const mlResult = await classifyFoodImage(img);
+            setScanning(false);
+
+            if (!mlResult.is_valid_food) {
+              setNonFoodError(mlResult.error_message);
+            } else {
+              setDetectedProduct(mlResult.food_data);
+              setCustomFoodTitle(mlResult.detected_title);
+            }
           }
-        }
-        setCustomFoodTitle(file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "));
+        };
+        img.src = dataUrl;
       };
       reader.readAsDataURL(file);
     }
@@ -277,25 +295,18 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
   const handleSelectPreset = (preset) => {
     setCapturedPhoto(preset.image);
     setCustomFoodTitle(preset.name);
-    setValidationWarning(null);
+    setNonFoodError(null);
   };
 
   const handleProceedWithScan = () => {
+    if (nonFoodError) return;
     const titleToUse = customFoodTitle.trim() || "Identified Meal Item";
     triggerAnalysisProcess(titleToUse, capturedPhoto);
   };
 
   const triggerAnalysisProcess = (foodName, imageSource) => {
     setScanning(true);
-    setScanStep(
-      activeTab === 'barcode' ? "Verifying packaged product with Open Food Facts..." :
-      activeTab === 'label' ? "Calculating exact OCR macronutrients..." :
-      "Analyzing ingredients, portion weights & macros..."
-    );
-
-    setTimeout(() => {
-      setScanStep("Evaluating goal alignment score & personalized diet fit...");
-    }, 700);
+    setScanStep("Analyzing portion weights, glycemic response & daily goals...");
 
     setTimeout(() => {
       setScanning(false);
@@ -303,9 +314,10 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
         foodName,
         scanType: activeTab,
         image: imageSource,
-        parsedData: detectedProduct
+        parsedData: detectedProduct,
+        is_valid_food: !nonFoodError
       });
-    }, 1400);
+    }, 1200);
   };
 
   if (!isOpen) return null;
@@ -318,10 +330,10 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
           <div>
             <h3 className="font-extrabold text-slate-800 text-sm sm:text-base flex items-center gap-2">
               <Camera className="w-5 h-5 text-emerald-600" />
-              Real Vision & Barcode Scanner
+              ML Food & Barcode Vision Scanner
             </h3>
             <span className="text-[11px] text-slate-500 font-medium">
-              Live webcam feed • Direct canvas snapshot
+              Trained on Indian & global foods • Real non-food filter
             </span>
           </div>
           <button
@@ -346,7 +358,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
                 setActiveTab(tab.id);
                 setCapturedPhoto(null);
                 setDetectedProduct(null);
-                setValidationWarning(null);
+                setNonFoodError(null);
               }}
               className={`flex-1 pb-2 text-[11px] font-bold transition-all border-b-2 ${
                 activeTab === tab.id
@@ -362,7 +374,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
         {/* Viewfinder / Capture Area */}
         <div className="p-4 flex-1 overflow-y-auto space-y-3">
           <div className="relative aspect-[4/3] bg-slate-950 rounded-2xl overflow-hidden flex items-center justify-center border-2 border-dashed border-emerald-500/40">
-            {/* 1. Permanent Live Video Element (Always present in DOM to prevent ref loss) */}
+            {/* 1. Permanent Live Video Element */}
             <video
               ref={videoRef}
               autoPlay
@@ -380,7 +392,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
               />
             )}
 
-            {/* Error Message / Permission Denied Overlay */}
+            {/* Camera Error Message Overlay */}
             {cameraError && !capturedPhoto && (
               <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center z-10">
                 <AlertCircle className="w-12 h-12 text-rose-500 mb-3" />
@@ -436,7 +448,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
               <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center text-white p-6 z-20">
                 <div className="w-12 h-12 rounded-full border-3 border-emerald-500 border-t-transparent animate-spin mb-4" />
                 <span className="font-extrabold text-base text-emerald-400 tracking-tight">
-                  {activeTab === 'barcode' ? 'Decoding Real Barcode...' : 'Processing Vision & OCR...'}
+                  Analyzing Frame with ML...
                 </span>
                 <span className="text-xs text-slate-300 mt-1 text-center font-medium animate-pulse px-4">
                   {scanStep}
@@ -467,64 +479,89 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
             </div>
           )}
 
-          {/* Non-Food / Low Quality Warning */}
-          {validationWarning && (
-            <div className="p-3 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-semibold flex items-start gap-2 animate-fadeIn">
-              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold block">Image Quality Notice:</span>
-                <span>{validationWarning}</span>
+          {/* 🚫 NON-FOOD / PERSON DETECTION WARNING BANNER */}
+          {nonFoodError && (
+            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-300 text-rose-900 text-xs font-semibold space-y-2 animate-fadeIn">
+              <div className="flex items-start gap-2.5">
+                <Ban className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-black text-rose-900 block text-sm">No Food Item Recognized</span>
+                  <p className="text-rose-800 text-xs mt-0.5 leading-relaxed">{nonFoodError}</p>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-rose-200 flex gap-2">
+                <button
+                  onClick={() => {
+                    setCapturedPhoto(null);
+                    setNonFoodError(null);
+                    startCamera();
+                  }}
+                  className="flex-1 py-2 bg-rose-600 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-sm hover:bg-rose-500"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Retake Photo</span>
+                </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-4 py-2 bg-white border border-rose-200 text-rose-700 rounded-xl text-xs font-bold hover:bg-rose-50"
+                >
+                  Upload Dish Image
+                </button>
               </div>
             </div>
           )}
 
-          {/* Real Capture Verification & Dish Confirmation */}
-          {capturedPhoto && !scanning && (
+          {/* ✅ VALID FOOD CONFIRMATION & MACROS DISPLAY */}
+          {capturedPhoto && !scanning && !nonFoodError && (
             <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200 space-y-2.5 animate-fadeIn">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-emerald-900 flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  {detectedProduct ? "Product / OCR Recognized!" : "Photo Captured Successfully"}
+                  Food Recognized: {detectedProduct?.category || "Indian Dish"}
                 </span>
                 <button
                   onClick={() => {
                     setCapturedPhoto(null);
                     setDetectedProduct(null);
+                    setNonFoodError(null);
                     startCamera();
                   }}
                   className="text-[11px] font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"
                 >
-                  <RefreshCw className="w-3 h-3" />
+                  <RefreshCw className="w-3.5 h-3.5" />
                   Retake
                 </button>
               </div>
 
               {detectedProduct && (
                 <div className="p-2.5 bg-white rounded-xl border border-emerald-200 text-xs space-y-1">
-                  <div className="font-bold text-slate-800">{detectedProduct.product_name}</div>
-                  <div className="text-slate-500 text-[11px] flex gap-3">
+                  <div className="font-bold text-slate-800">{detectedProduct.name || detectedProduct.product_name}</div>
+                  <div className="text-slate-500 text-[11px] flex gap-3 font-semibold">
                     <span>🔥 {detectedProduct.calories} kcal</span>
                     <span>💪 {detectedProduct.protein_g}g protein</span>
                     <span>🌾 {detectedProduct.carbs_g}g carbs</span>
+                    <span>🥑 {detectedProduct.fat_g}g fat</span>
                   </div>
                 </div>
               )}
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Confirm Dish Name / Scanned Item:
+                  Confirm Dish Name:
                 </label>
                 <input
                   type="text"
                   value={customFoodTitle}
                   onChange={(e) => setCustomFoodTitle(e.target.value)}
-                  placeholder="e.g. Paneer Tikka Sandwich, Dal Rice, Oats Bowl..."
+                  placeholder="e.g. Dal Tadka + Rice, Paneer Bhurji, Poha..."
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 bg-white"
                 />
               </div>
 
+              {/* Popular Indian Food Quick Pickers */}
               <div className="flex flex-wrap gap-1 pt-1">
-                {["Paneer Sandwich", "Dal Tadka + Rice", "Greek Salad", "Fruit Bowl", "Protein Bar"].map((name, i) => (
+                {["Dal Tadka + Rice", "Paneer Bhurji + Roti", "Rajma Chawal", "Veg Poha", "Moong Cheela", "Fruit Bowl"].map((name, i) => (
                   <button
                     key={i}
                     onClick={() => setCustomFoodTitle(name)}
@@ -540,7 +577,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
                 className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-extrabold text-xs shadow-md shadow-emerald-600/30 hover:opacity-95 active:scale-95 transition-all flex items-center justify-center gap-1.5"
               >
                 <Sparkles className="w-4 h-4" />
-                <span>Analyze Nutritional Value & Score</span>
+                <span>View Full Nutritional Breakdown & Fit</span>
               </button>
             </div>
           )}
