@@ -1,4 +1,5 @@
 // NutriWise API Client & Dynamic Recommendation Engine
+import { validateFoodInput, estimateNutritionalValues } from './foodIntelligence';
 
 const API_BASE_URL = "http://localhost:8000";
 
@@ -296,145 +297,56 @@ export async function fetchDietPlan(profile) {
   };
 }
 
-// Dynamic Intelligent Food Analyzer: Uses Real Parsed Data + Persona Goals
+// AI-Powered Food Intelligence with Non-Food / Gibberish Validation
 export async function analyzeScannedFood(foodName, userProfile, todayConsumed, parsedData = null) {
-  const profile = userProfile || { goal: "overall_fitness", user_type: "general" };
-  const name = foodName || parsedData?.product_name || "Captured Meal Item";
-  const lowerName = name.toLowerCase();
-
-  // If we have actual parsed data from Barcode / OpenFoodFacts or OCR
-  let calories = parsedData?.calories;
-  let protein_g = parsedData?.protein_g;
-  let carbs_g = parsedData?.carbs_g;
-  let fat_g = parsedData?.fat_g;
-  let fiber_g = parsedData?.fiber_g || 3.0;
-  let sugar_g = parsedData?.sugar_g || 4.0;
-  let sodium_mg = parsedData?.sodium_mg || 380;
-  let serving_size = parsedData?.serving_size || "1 standard portion";
-  let allergens = parsedData?.allergens || [];
-
-  if (!calories) {
-    // Dynamic Heuristic parsing based on detected dish keywords
-    if (lowerName.includes("paneer") || lowerName.includes("curd") || lowerName.includes("tofu")) {
-      calories = 380; protein_g = 19.5; carbs_g = 36.0; fat_g = 15.0; fiber_g = 4.5;
-      allergens = ["dairy"];
-    } else if (lowerName.includes("dal") || lowerName.includes("rice") || lowerName.includes("khichdi")) {
-      calories = 460; protein_g = 15.5; carbs_g = 76.0; fat_g = 10.0; fiber_g = 7.8;
-      allergens = [];
-    } else if (lowerName.includes("salad") || lowerName.includes("fruit") || lowerName.includes("sprout")) {
-      calories = 210; protein_g = 8.5; carbs_g = 32.0; fat_g = 4.5; fiber_g = 7.5;
-      allergens = [];
-    } else if (lowerName.includes("egg") || lowerName.includes("omelette") || lowerName.includes("bhurji")) {
-      calories = 320; protein_g = 20.0; carbs_g = 22.0; fat_g = 14.5; fiber_g = 3.0;
-      allergens = ["egg"];
-    } else if (lowerName.includes("chicken") || lowerName.includes("fish") || lowerName.includes("biryani")) {
-      calories = 540; protein_g = 34.0; carbs_g = 52.0; fat_g = 17.0; fiber_g = 4.0;
-      allergens = [];
-    } else if (lowerName.includes("burger") || lowerName.includes("pizza") || lowerName.includes("chips") || lowerName.includes("soda")) {
-      calories = 620; protein_g = 14.0; carbs_g = 84.0; fat_g = 26.0; fiber_g = 2.0; sugar_g = 24.0; sodium_mg = 980;
-      allergens = ["gluten", "dairy"];
-    } else {
-      // General balanced home plate estimate
-      calories = 390; protein_g = 15.0; carbs_g = 54.0; fat_g = 12.0; fiber_g = 5.0;
-      allergens = [];
-    }
+  // 1. If parsedData (from verified Barcode or OCR) is present, use it directly
+  if (parsedData && parsedData.calories) {
+    const result = estimateNutritionalValues(parsedData.product_name || foodName || "Packaged Food", userProfile);
+    result.food_item = {
+      ...result.food_item,
+      name: parsedData.product_name || result.food_item.name,
+      calories: parsedData.calories,
+      protein_g: parsedData.protein_g,
+      carbs_g: parsedData.carbs_g,
+      fat_g: parsedData.fat_g,
+      fiber_g: parsedData.fiber_g || 3.0,
+      sugar_g: parsedData.sugar_g || 4.0,
+      sodium_mg: parsedData.sodium_mg || 380,
+      serving_size: parsedData.serving_size || "1 serving"
+    };
+    return result;
   }
 
-  // Dynamic Goal Evaluation
-  const isHighProtein = protein_g >= 16;
-  const isHighSugar = sugar_g > 15;
-  const isHighSodium = sodium_mg > 700;
-  const isAthlete = profile.user_type === 'athlete';
-  const goal = (profile.goal || "").toLowerCase();
-
-  let score = 7.0;
-  let verdict = "good_fit";
-  let badge_label = "Good Choice";
-  let rationale = "";
-  let suggestions = [];
-  let health_highlights = [];
-
-  if (goal.includes("protein") || isAthlete) {
-    if (isHighProtein) {
-      score += 2.0;
-      health_highlights.push(`High Protein density (${protein_g}g) supports muscle repair for your ${profile.sport || 'athletic'} targets.`);
-    } else {
-      score -= 1.2;
-      suggestions.push(`Protein is slightly low (${protein_g}g). Pair with a cup of curd, roasted chana, or boiled egg.`);
-    }
+  // 2. Validate input string for gibberish, non-food, or objects
+  const validation = validateFoodInput(foodName);
+  if (!validation.isValid) {
+    return {
+      is_valid_food: false,
+      error_message: validation.reason,
+      verdict: "invalid",
+      food_item: { name: foodName || "Invalid Item" }
+    };
   }
 
-  if (isHighSugar) {
-    score -= 2.2;
-    suggestions.push(`High simple sugar content (${sugar_g}g). May trigger rapid glucose spikes.`);
-  }
-
-  if (isHighSodium) {
-    score -= 1.2;
-    suggestions.push(`Higher sodium content (${sodium_mg}mg). Ensure adequate hydration with a tall glass of water.`);
-  }
-
-  if (fiber_g >= 5.0) {
-    score += 0.8;
-    health_highlights.push(`Rich in dietary fiber (${fiber_g}g), facilitating slow gastric digestion.`);
-  }
-
-  score = Math.max(2.5, Math.min(9.8, Number(score.toFixed(1))));
-
-  if (score >= 7.8) {
-    verdict = "good_fit";
-    badge_label = `Good Choice — ${score}/10`;
-    rationale = `This ${name} is well-suited for your ${profile.goal?.replace('_', ' ') || 'overall fitness'} goal. It provides balanced macro timing without excess empty calories.`;
-  } else if (score >= 5.5) {
-    verdict = "modify";
-    badge_label = `Can Fit with Modification — ${score}/10`;
-    rationale = `Nutritionally acceptable for ${name}, but adding fiber or protein will align closer with your daily target.`;
-  } else {
-    verdict = "not_ideal";
-    badge_label = `Not Ideal for Current Goal — ${score}/10`;
-    rationale = `High in processed sugars or refined fats. Consider an air-fried or whole-grain alternative in 'Make My Meal Better'.`;
-  }
-
-  if (!suggestions.length) {
-    suggestions.push("Great macro distribution. Pair with a glass of water for digestive ease.");
-  }
-
-  return {
-    food_item: {
-      name,
-      category: parsedData ? "Verified Product / OCR" : "Identified Food / Meal",
-      serving_size,
-      calories,
-      protein_g,
-      carbs_g,
-      fat_g,
-      fiber_g,
-      sugar_g,
-      sodium_mg,
-      vitamins: ["B-Complex", "Minerals", "Antioxidants"],
-      allergens
-    },
-    verdict,
-    score,
-    badge_label,
-    macro_fit_summary: {
-      protein_status: protein_g >= 18 ? "High Protein" : protein_g >= 10 ? "Moderate" : "Low Protein",
-      carb_status: carbs_g > 60 ? "High Carb" : "Balanced Carbs",
-      fat_status: fat_g > 18 ? "Rich" : "Lean",
-      calorie_impact: `${Math.round((calories / 2000) * 100)}% of standard daily intake`
-    },
-    rationale,
-    suggestions,
-    health_highlights
-  };
+  // 3. Generate AI nutritional breakdown
+  return estimateNutritionalValues(validation.cleanQuery, userProfile);
 }
 
 export async function improveMealApi(mealText, userProfile) {
+  const validation = validateFoodInput(mealText);
+  if (!validation.isValid) {
+    return {
+      is_valid: false,
+      error_message: validation.reason
+    };
+  }
+
   const query = (mealText || "").toLowerCase();
   const isPizza = query.includes("pizza") || query.includes("drink") || query.includes("coke");
   
   if (isPizza) {
     return {
+      is_valid: true,
       original_meal: "Cheese Pizza (2 Slices) + Regular Cola (330ml)",
       original_macros: { calories: 680, protein: 18, carbs: 102, fat: 23, sugar: 45, fiber: 3.2 },
       improved_meal: "Thin-Crust Grilled Veggie & Paneer Pizza + Lemon Mint Infused Sparkling Water + Side Salad",
@@ -460,6 +372,7 @@ export async function improveMealApi(mealText, userProfile) {
   }
 
   return {
+    is_valid: true,
     original_meal: `${mealText} (Standard Preparation)`,
     original_macros: { calories: 650, protein: 14, carbs: 82, fat: 24, sugar: 16, fiber: 3.0 },
     improved_meal: `Nutrient-Dense ${mealText} with Added Greens & Protein Boost`,
