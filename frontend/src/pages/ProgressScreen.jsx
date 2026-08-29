@@ -4,30 +4,42 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { useApp } from '../context/AppContext';
 
 export default function ProgressScreen() {
-  const { userProfile, todayLog, calendarHistory } = useApp();
+  const { userProfile, todayLog, calendarHistory, macroTargets } = useApp();
   const currentDayNum = new Date().getDate(); // e.g. 29
   const [selectedDay, setSelectedDay] = useState(currentDayNum);
+
+  const safeTodayLog = todayLog || {
+    score: 0,
+    water_ml: 0,
+    water_target_ml: 2400,
+    consumed_calories: 0,
+    consumed_protein_g: 0,
+    meals: []
+  };
+
+  const safeCalendarHistory = calendarHistory || {};
+  const safeMeals = Array.isArray(safeTodayLog.meals) ? safeTodayLog.meals : [];
+  const targetWater = macroTargets?.target_water_ml || 2400;
 
   // Dynamic Weekly Logged Data (Strictly Actual User Inputs)
   const currentDayOfWeek = new Date().getDay(); // 0 (Sun) to 6 (Sat)
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   
   const weeklyData = daysOfWeek.map((dayName, idx) => {
-    // Distance from today in days
     const diff = idx - currentDayOfWeek;
     const targetDateNum = currentDayNum + diff;
     
     if (idx === currentDayOfWeek) {
       return {
         day: dayName,
-        score: todayLog.score || 0,
-        protein: todayLog.consumed_protein_g || 0,
-        hasData: todayLog.score > 0 || todayLog.consumed_protein_g > 0
+        score: safeTodayLog.score || 0,
+        protein: safeTodayLog.consumed_protein_g || 0,
+        hasData: (safeTodayLog.score || 0) > 0 || (safeTodayLog.consumed_protein_g || 0) > 0
       };
-    } else if (calendarHistory[targetDateNum]) {
+    } else if (safeCalendarHistory[targetDateNum]) {
       return {
         day: dayName,
-        score: calendarHistory[targetDateNum].score,
+        score: safeCalendarHistory[targetDateNum].score || 0,
         protein: 0,
         hasData: true
       };
@@ -44,38 +56,45 @@ export default function ProgressScreen() {
   const calendarDays = [];
   for (let d = 1; d <= 31; d++) {
     const isToday = d === currentDayNum;
-    const hist = calendarHistory[d];
+    const hist = safeCalendarHistory[d];
 
     let score = null;
     let status = 'future';
 
     if (isToday) {
-      score = todayLog.score > 0 ? todayLog.score : null;
+      score = (safeTodayLog.score || 0) > 0 ? safeTodayLog.score : null;
       status = 'today';
     } else if (hist) {
       score = hist.score;
       status = hist.status || (hist.score >= 80 ? 'good' : 'moderate');
     } else if (d < currentDayNum) {
       score = null;
-      status = 'no_data'; // Strictly no dummy scores
+      status = 'no_data';
     }
 
     calendarDays.push({ day: d, score, status, isToday });
   }
 
-  const hasTodayActivity = todayLog.meals.some(m => m.status === 'completed' || m.status === 'skipped') || todayLog.water_ml > 0;
+  const hasTodayActivity = safeMeals.some(m => m.status === 'completed' || m.status === 'skipped') || (safeTodayLog.water_ml || 0) > 0;
+  
   const selectedHist = selectedDay === currentDayNum
     ? (hasTodayActivity ? {
-        score: todayLog.score,
-        meals_logged: todayLog.meals.filter(m => m.status === 'completed' || m.completed).length,
-        skipped: todayLog.meals.filter(m => m.status === 'skipped').length,
-        water_ml: todayLog.water_ml
+        score: safeTodayLog.score || 0,
+        meals_logged: safeMeals.filter(m => m.status === 'completed' || m.completed).length,
+        skipped: safeMeals.filter(m => m.status === 'skipped').length,
+        water_ml: safeTodayLog.water_ml || 0
       } : null)
-    : calendarHistory[selectedDay];
+    : safeCalendarHistory[selectedDay];
 
   // Average Score across real logged days only
-  const allRecordedScores = Object.values(calendarHistory).map(h => h.score).filter(s => s > 0);
-  if (todayLog.score > 0) allRecordedScores.push(todayLog.score);
+  const allRecordedScores = Object.values(safeCalendarHistory)
+    .map(h => (h && typeof h.score === 'number' ? h.score : 0))
+    .filter(s => s > 0);
+
+  if ((safeTodayLog.score || 0) > 0) {
+    allRecordedScores.push(safeTodayLog.score);
+  }
+
   const avgScore = allRecordedScores.length > 0
     ? Math.round(allRecordedScores.reduce((a, b) => a + b, 0) / allRecordedScores.length)
     : 0;
@@ -156,7 +175,7 @@ export default function ProgressScreen() {
                 )}
                 {isToday && (
                   <span className="text-[7px] uppercase tracking-wider font-extrabold leading-none">
-                    {todayLog.score > 0 ? `${todayLog.score}p` : 'Today'}
+                    {(safeTodayLog.score || 0) > 0 ? `${safeTodayLog.score}p` : 'Today'}
                   </span>
                 )}
               </button>
@@ -187,19 +206,19 @@ export default function ProgressScreen() {
                 <div className="text-slate-600 flex justify-between">
                   <span>Completed Meals:</span>
                   <span className="font-bold text-emerald-600">
-                    {todayLog.meals.filter(m => m.status === 'completed' || m.completed).length} / {todayLog.meals.length}
+                    {safeMeals.filter(m => m.status === 'completed' || m.completed).length} / {Math.max(4, safeMeals.length)}
                   </span>
                 </div>
                 <div className="text-slate-600 flex justify-between">
                   <span>Skipped Meals (0 pts):</span>
                   <span className="font-bold text-rose-600">
-                    {todayLog.meals.filter(m => m.status === 'skipped').length}
+                    {safeMeals.filter(m => m.status === 'skipped').length}
                   </span>
                 </div>
                 <div className="text-slate-600 flex justify-between">
                   <span>Hydration Logged:</span>
                   <span className="font-bold text-cyan-600">
-                    {todayLog.water_ml} ml / {macroTargets.target_water_ml} ml
+                    {safeTodayLog.water_ml || 0} ml / {targetWater} ml
                   </span>
                 </div>
               </div>
@@ -226,7 +245,7 @@ export default function ProgressScreen() {
           <div>
             <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Weekly Score Log</h3>
             <div className="text-base font-black text-slate-800 mt-0.5">
-              {todayLog.score > 0 ? `Today's Score: ${todayLog.score} pts` : "Awaiting Today's Inputs"}
+              {(safeTodayLog.score || 0) > 0 ? `Today's Score: ${safeTodayLog.score} pts` : "Awaiting Today's Inputs"}
             </div>
           </div>
           <div className="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
@@ -271,10 +290,10 @@ export default function ProgressScreen() {
         </h4>
 
         <p className="text-xs text-indigo-100/90 leading-relaxed">
-          {todayLog.meals.some(m => m.status === 'skipped')
+          {safeMeals.some(m => m.status === 'skipped')
             ? "⚠️ A skipped meal was recorded today. Remember that skipping meals drops your daily nutrition score. Try small protein or fruit snacks if tight on time."
-            : todayLog.consumed_calories > 0
-            ? `✅ You have logged ${todayLog.consumed_calories} kcal and ${todayLog.consumed_protein_g}g protein today. Keep logging your scheduled meals to hit 100% daily nutrition balance.`
+            : (safeTodayLog.consumed_calories || 0) > 0
+            ? `✅ You have logged ${safeTodayLog.consumed_calories} kcal and ${safeTodayLog.consumed_protein_g}g protein today. Keep logging your scheduled meals to hit 100% daily nutrition balance.`
             : "Welcome to your clean nutrition tracker! Log your meals or hydration intake today to calculate your first daily score."}
         </p>
       </div>
