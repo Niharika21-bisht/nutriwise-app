@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, Flame, Dumbbell, Check, Sparkles, RefreshCw, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
+import { Clock, Flame, Dumbbell, Check, Sparkles, RefreshCw, ChevronDown, ChevronUp, CheckCircle2, MapPin } from 'lucide-react';
 
 export default function FoodCard({
   mealType = "Breakfast",
@@ -51,7 +51,7 @@ export default function FoodCard({
     }`}>
       {/* Top Header */}
       <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className={`text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
             mealType === 'Breakfast' ? 'bg-amber-100 text-amber-800' :
             mealType === 'Lunch' ? 'bg-emerald-100 text-emerald-800' :
@@ -63,6 +63,10 @@ export default function FoodCard({
           <span className="flex items-center gap-1 text-xs text-slate-400 font-medium">
             <Clock className="w-3 h-3" />
             {activePrepTime}
+          </span>
+          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60 flex items-center gap-1">
+            <MapPin className="w-2.5 h-2.5 text-emerald-600" />
+            <span>Local & In-Season</span>
           </span>
         </div>
 
@@ -126,16 +130,16 @@ export default function FoodCard({
         </div>
       )}
 
-      {/* 🔄 Interactive Meal Alternative Options Drawer */}
+      {/* 🔄 Seasonal & Local Equivalent Options Drawer */}
       {altList.length > 0 && (
         <div className="mt-3 pt-2.5 border-t border-slate-100">
           <button
             onClick={() => setShowAlternatives(!showAlternatives)}
-            className="w-full py-1.5 px-2.5 rounded-xl bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 text-[11px] font-bold flex items-center justify-between transition-colors"
+            className="w-full py-2 px-3 rounded-xl bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 text-[11px] font-bold flex items-center justify-between transition-colors border border-slate-200/60"
           >
             <div className="flex items-center gap-1.5">
               <RefreshCw className="w-3 h-3 text-emerald-600" />
-              <span>{altList.length} Equivalent Nutrient Options Available</span>
+              <span>{altList.length} In-Season & Local Market Options</span>
             </div>
             {showAlternatives ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
@@ -143,7 +147,7 @@ export default function FoodCard({
           {showAlternatives && (
             <div className="mt-2 space-y-2 animate-fadeIn">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block px-1">
-                Tap to Swap into your plan:
+                Practical, seasonal alternatives from local Mandi & Kirana:
               </span>
               {altList.map((alt, altIdx) => {
                 const isCurrent = alt.title === activeMealTitle;
@@ -151,7 +155,7 @@ export default function FoodCard({
                   <div
                     key={altIdx}
                     onClick={() => handleSelectAlternative(alt)}
-                    className={`p-2.5 rounded-2xl border text-left cursor-pointer transition-all ${
+                    className={`p-3 rounded-2xl border text-left cursor-pointer transition-all ${
                       isCurrent
                         ? 'bg-emerald-50 border-emerald-400 shadow-sm'
                         : 'bg-white border-slate-100 hover:border-emerald-200 hover:bg-slate-50/70'
@@ -159,30 +163,35 @@ export default function FoodCard({
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           {isCurrent && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />}
                           <span className={`text-xs font-black ${isCurrent ? 'text-emerald-900' : 'text-slate-800'}`}>
                             {alt.title}
                           </span>
                         </div>
+                        {alt.local_availability && (
+                          <span className="inline-block mt-0.5 text-[9px] font-extrabold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.2 rounded">
+                            {alt.local_availability}
+                          </span>
+                        )}
                         {alt.description && (
-                          <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">{alt.description}</p>
+                          <p className="text-[10px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">{alt.description}</p>
                         )}
                       </div>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg flex-shrink-0 ${
+                      <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-xl flex-shrink-0 transition-all ${
                         isCurrent
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-800'
+                          ? 'bg-emerald-600 text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-700 hover:bg-emerald-600 hover:text-white'
                       }`}>
-                        {isCurrent ? "Selected" : "Select"}
+                        {isCurrent ? "✓ Active" : "Swap"}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2.5 mt-1.5 text-[10px] font-bold text-slate-600">
-                      <span className="text-amber-700">🔥 {alt.calories} kcal</span>
-                      <span className="text-blue-700">💪 {alt.protein_g}g protein</span>
+                    <div className="flex items-center gap-2.5 mt-2 pt-1.5 border-t border-slate-100 text-[10px] font-bold text-slate-600">
+                      <span className="text-amber-700 font-black">🔥 {alt.calories} kcal</span>
+                      <span className="text-blue-700 font-black">💪 {alt.protein_g}g protein</span>
                       {alt.carbs_g && <span className="text-slate-500">🌾 {alt.carbs_g}g carbs</span>}
-                      {alt.prep_time && <span className="text-slate-400">⏱️ {alt.prep_time}</span>}
+                      {alt.prep_time && <span className="text-slate-400 font-semibold">⏱️ {alt.prep_time}</span>}
                     </div>
                   </div>
                 );
