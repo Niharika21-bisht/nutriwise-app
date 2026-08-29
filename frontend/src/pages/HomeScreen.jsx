@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Camera, Sparkles, UtensilsCrossed, Plus, Droplets, ArrowRight, CheckCircle2, XCircle, Clock, Flame, Dumbbell, ShieldCheck, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Camera, Sparkles, UtensilsCrossed, Plus, Droplets, ArrowRight, CheckCircle2, XCircle, Clock, Flame, Dumbbell, ShieldCheck, AlertTriangle, Edit3 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ScoreGauge from '../components/ScoreGauge';
 import MacroProgress from '../components/MacroProgress';
@@ -21,6 +21,15 @@ export default function HomeScreen() {
 
   const [cameraModalOpen, setCameraModalOpen] = useState(false);
   const [cameraMode, setCameraMode] = useState('meal');
+  const [liveCurrentTime, setLiveCurrentTime] = useState(new Date());
+
+  // Real-time ticking clock (updates every second)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setLiveCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleOpenScanner = (mode = 'meal') => {
     setCameraMode(mode);
@@ -49,11 +58,25 @@ export default function HomeScreen() {
   };
 
   const getTimeGreeting = () => {
-    const hour = new Date().getHours();
+    const hour = liveCurrentTime.getHours();
     if (hour < 12) return 'Good morning';
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
   };
+
+  // Determine current active meal based on live real-time clock
+  const getActiveMealSlotId = () => {
+    const hour = liveCurrentTime.getHours();
+    const minutes = liveCurrentTime.getMinutes();
+    const timeVal = hour * 60 + minutes;
+
+    if (timeVal >= 300 && timeVal < 690) return 'breakfast'; // 5:00 AM - 11:30 AM
+    if (timeVal >= 690 && timeVal < 930) return 'lunch';     // 11:30 AM - 3:30 PM
+    if (timeVal >= 930 && timeVal < 1170) return 'snack';    // 3:30 PM - 7:30 PM
+    return 'dinner';                                         // 7:30 PM - 5:00 AM
+  };
+
+  const activeSlotId = getActiveMealSlotId();
 
   const renderAvatar = () => {
     if (userProfile.profile_image) {
@@ -65,8 +88,23 @@ export default function HomeScreen() {
     return <span className="font-extrabold">{userProfile.name ? userProfile.name[0].toUpperCase() : 'N'}</span>;
   };
 
+  const formattedTimeStr = liveCurrentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const formattedDateStr = liveCurrentTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+
   return (
     <div className="pb-28 px-4 pt-2 max-w-md mx-auto space-y-5 animate-fadeIn">
+      {/* Live Time & Date Status Pill */}
+      <div className="flex items-center justify-between bg-white px-3.5 py-1.5 rounded-2xl border border-slate-200 shadow-sm text-xs font-bold">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+          <span className="text-emerald-700 uppercase tracking-wider font-extrabold text-[10px]">
+            Live Sync
+          </span>
+          <span className="text-slate-700 font-extrabold">{formattedTimeStr}</span>
+        </div>
+        <span className="text-slate-500 text-[11px] font-semibold">{formattedDateStr}</span>
+      </div>
+
       {/* User Greeting Bar with Avatar */}
       <div className="flex items-center justify-between">
         <div>
@@ -87,24 +125,24 @@ export default function HomeScreen() {
 
       {/* 1. Today's Nutrition Score circular gauge */}
       <ScoreGauge
-        score={todayLog.score || 75}
-        delta={todayLog.score >= 75 ? 6 : -4}
+        score={todayLog.score || 0}
+        delta={(todayLog.score || 0) > 0 ? (todayLog.score >= 75 ? 6 : -4) : 0}
         label="Today's Nutrition Score"
       />
 
       {/* 2. Today's Progress Rings & Bars */}
       <MacroProgress
-        consumedProtein={todayLog.consumed_protein_g}
+        consumedProtein={todayLog.consumed_protein_g || 0}
         targetProtein={macroTargets.target_protein_g}
-        consumedWater={todayLog.water_ml}
+        consumedWater={todayLog.water_ml || 0}
         targetWater={macroTargets.target_water_ml}
-        mealBalance={todayLog.score >= 80 ? 88 : 72}
+        mealBalance={(todayLog.score || 0) >= 80 ? 88 : (todayLog.score || 0) > 0 ? 65 : 0}
       />
 
       {/* 3. Quick Action Cards */}
       <div className="space-y-2">
         <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-          Quick Actions
+          Live Input Actions
         </span>
         <div className="grid grid-cols-3 gap-2.5">
           {/* Scan Food Card */}
@@ -117,91 +155,70 @@ export default function HomeScreen() {
             </div>
             <div className="mt-3">
               <div className="text-xs font-bold text-slate-800">Scan Meal</div>
-              <div className="text-[10px] text-slate-400 font-medium">Plate & Label</div>
+              <div className="text-[10px] text-slate-400 font-medium">Camera / OCR</div>
             </div>
           </button>
 
-          {/* Make My Meal Better Card */}
+          {/* Type Meal Name Card */}
           <button
-            onClick={() => setCurrentScreen('make_meal_better')}
-            className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-soft hover:shadow-card hover:opacity-95 transition-all text-left flex flex-col justify-between group"
-          >
-            <div className="w-9 h-9 rounded-xl bg-white/20 text-white flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div className="mt-3">
-              <div className="text-xs font-black">Upgrade Meal</div>
-              <div className="text-[10px] text-amber-100 font-semibold">Make Better</div>
-            </div>
-          </button>
-
-          {/* Diet Plan Card */}
-          <button
-            onClick={() => setCurrentScreen('diet_plan')}
-            className="p-3.5 rounded-2xl bg-white border border-slate-100 shadow-soft hover:shadow-card hover:border-emerald-200 transition-all text-left flex flex-col justify-between group"
+            onClick={() => setCurrentScreen('scan')}
+            className="p-3.5 rounded-2xl bg-white border border-slate-100 shadow-soft hover:shadow-card hover:border-teal-200 transition-all text-left flex flex-col justify-between group"
           >
             <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <UtensilsCrossed className="w-5 h-5" />
+              <Edit3 className="w-5 h-5" />
             </div>
             <div className="mt-3">
-              <div className="text-xs font-bold text-slate-800">Diet Plan</div>
-              <div className="text-[10px] text-slate-400 font-medium">3-Day Plan</div>
+              <div className="text-xs font-bold text-slate-800">Type Dish</div>
+              <div className="text-[10px] text-slate-400 font-medium">AI Input</div>
+            </div>
+          </button>
+
+          {/* Quick Water Button */}
+          <button
+            onClick={addWaterGlass}
+            className="p-3.5 rounded-2xl bg-white border border-slate-100 shadow-soft hover:shadow-card hover:border-cyan-200 transition-all text-left flex flex-col justify-between group"
+          >
+            <div className="w-9 h-9 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Droplets className="w-5 h-5" />
+            </div>
+            <div className="mt-3">
+              <div className="text-xs font-bold text-slate-800">+250ml Water</div>
+              <div className="text-[10px] text-cyan-600 font-bold">1-Tap Log</div>
             </div>
           </button>
         </div>
       </div>
 
-      {/* 4. Hydration Quick Tracker */}
-      <div className="bg-gradient-to-br from-cyan-50/80 to-blue-50/60 p-4 rounded-3xl border border-cyan-100/80 flex items-center justify-between shadow-soft">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-cyan-500 text-white flex items-center justify-center shadow-md shadow-cyan-500/30">
-            <Droplets className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold text-slate-800">Hydration Intake</div>
-            <div className="text-[11px] text-slate-500">
-              {todayLog.water_ml} ml / {macroTargets.target_water_ml} ml target
-            </div>
-          </div>
-        </div>
-
-        <button
-          onClick={addWaterGlass}
-          className="px-3 py-1.5 rounded-xl bg-white text-cyan-700 font-extrabold text-xs border border-cyan-200 shadow-sm hover:bg-cyan-50 active:scale-95 transition-all flex items-center gap-1"
-        >
-          <Plus className="w-3.5 h-3.5 stroke-[3]" />
-          +250 ml
-        </button>
-      </div>
-
-      {/* 5. Today's Meals Timeline with Diet Fit Status & Skip option */}
+      {/* 4. Live Today's Meal Schedule with Active Real-Time Highlight */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-              Today's Meals Schedule
+              Live Meals Schedule
             </span>
             <span className="text-xs font-semibold text-slate-500 ml-2">
-              ({todayLog.meals.filter(m => m.status === 'completed' || m.completed).length}/{todayLog.meals.length} Logged)
+              ({(todayLog.meals || []).filter(m => m.status === 'completed' || m.completed).length}/{(todayLog.meals || []).length} Logged)
             </span>
           </div>
           <button
             onClick={() => setCurrentScreen('diet_plan')}
             className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-0.5"
           >
-            <span>Full Plan</span>
+            <span>Weekly Plan</span>
             <ArrowRight className="w-3 h-3" />
           </button>
         </div>
 
         <div className="space-y-3">
-          {todayLog.meals.map((meal) => {
+          {(todayLog.meals || []).map((meal) => {
             const isCompleted = meal.status === 'completed' || meal.completed;
             const isSkipped = meal.status === 'skipped';
+            const isCurrentActiveTime = meal.id === activeSlotId && !isCompleted && !isSkipped;
 
             let cardBg = "bg-white border-slate-100 shadow-soft";
             if (isCompleted) cardBg = "bg-emerald-50/60 border-emerald-200";
             if (isSkipped) cardBg = "bg-rose-50/50 border-rose-200/80 opacity-75";
+            if (isCurrentActiveTime) cardBg = "bg-emerald-50/80 border-emerald-400 ring-2 ring-emerald-400/50 shadow-md";
 
             return (
               <div
@@ -228,6 +245,11 @@ export default function HomeScreen() {
                         <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                           {meal.type} • {meal.time || userProfile.meal_timings?.[meal.id] || "Schedule"}
                         </span>
+                        {isCurrentActiveTime && (
+                          <span className="text-[9px] font-black uppercase text-emerald-800 bg-emerald-200/80 px-1.5 py-0.2 rounded-full animate-pulse">
+                            🟢 Active Meal Time
+                          </span>
+                        )}
                         {isSkipped && (
                           <span className="text-[9px] font-black uppercase text-rose-700 bg-rose-100 px-1.5 py-0.2 rounded">
                             Skipped (0 pts)
@@ -256,6 +278,11 @@ export default function HomeScreen() {
                         Skip Meal
                       </button>
                     )}
+                    {isCompleted && (
+                      <span className="text-[9px] font-bold text-emerald-600 mt-0.5">
+                        ✓ Recorded
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -282,7 +309,7 @@ export default function HomeScreen() {
         </div>
       </div>
 
-      {/* Camera Modal component */}
+      {/* Camera Modal */}
       <CameraModal
         isOpen={cameraModalOpen}
         defaultMode={cameraMode}
