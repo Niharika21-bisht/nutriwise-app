@@ -29,7 +29,7 @@ export function AppProvider({ children }) {
   // Calculated Macro Targets
   const [macroTargets, setMacroTargets] = useState(() => calculateClientTargets(userProfile));
 
-  // Generated Diet Plan (3-Day Blueprint)
+  // Generated Diet Plan (7-Day Blueprint)
   const [dietPlan, setDietPlan] = useState(null);
   const [loadingDietPlan, setLoadingDietPlan] = useState(false);
 
@@ -43,7 +43,6 @@ export function AppProvider({ children }) {
         if (parsed.date === todayStr) return parsed;
       } catch (e) {}
     }
-    // Clean morning baseline with 0 dummy values
     return {
       date: new Date().toISOString().split('T')[0],
       score: 0,
@@ -62,7 +61,7 @@ export function AppProvider({ children }) {
     };
   });
 
-  // Clean Calendar History (Zero Dummy Values - Strictly Real Saved Logs)
+  // Clean Calendar History (Zero Dummy Values)
   const [calendarHistory, setCalendarHistory] = useState(() => {
     const saved = localStorage.getItem('nutriwise_calendar_history_v2');
     if (saved) {
@@ -70,7 +69,6 @@ export function AppProvider({ children }) {
         return JSON.parse(saved);
       } catch (e) {}
     }
-    // Zero hardcoded dummy days
     return {};
   });
 
@@ -110,8 +108,7 @@ export function AppProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('nutriwise_today_log_v2', JSON.stringify(todayLog));
     
-    // Only synchronize today into calendar if the user has actually logged meals or water
-    const hasUserActivity = todayLog.meals.some(m => m.status === 'completed' || m.status === 'skipped') || todayLog.water_ml > 0;
+    const hasUserActivity = (todayLog.meals || []).some(m => m.status === 'completed' || m.status === 'skipped') || todayLog.water_ml > 0;
     
     if (hasUserActivity) {
       const currentDayNum = new Date().getDate();
@@ -121,8 +118,8 @@ export function AppProvider({ children }) {
           [currentDayNum]: {
             score: todayLog.score,
             status: todayLog.score >= 82 ? 'optimal' : todayLog.score >= 70 ? 'good' : 'moderate',
-            meals_logged: todayLog.meals.filter(m => m.status === 'completed').length,
-            skipped: todayLog.meals.filter(m => m.status === 'skipped').length,
+            meals_logged: (todayLog.meals || []).filter(m => m.status === 'completed').length,
+            skipped: (todayLog.meals || []).filter(m => m.status === 'skipped').length,
             water_ml: todayLog.water_ml
           }
         };
@@ -131,31 +128,6 @@ export function AppProvider({ children }) {
       });
     }
   }, [todayLog]);
-
-  // Periodic Hydration & Meal Notifications Engine
-  useEffect(() => {
-    if (userProfile.notifications_enabled) {
-      if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission();
-      }
-
-      const interval = setInterval(() => {
-        const now = new Date();
-        const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        
-        const timings = userProfile.meal_timings || DEFAULT_USER_PROFILE.meal_timings;
-        if (currentTime === timings.breakfast) {
-          triggerNotification("🍽️ Breakfast Reminder", "Time for Breakfast! Scan or mark your morning meal in NutriWise.");
-        } else if (currentTime === timings.lunch) {
-          triggerNotification("🍽️ Lunch Reminder", "Time for Lunch! Log your meal to maintain your nutrition score.");
-        } else if (currentTime === timings.dinner) {
-          triggerNotification("🍽️ Dinner Reminder", "Time for Dinner! Complete your daily nutrition target.");
-        }
-      }, 60000);
-
-      return () => clearInterval(interval);
-    }
-  }, [userProfile.notifications_enabled, userProfile.meal_timings]);
 
   const triggerNotification = (title, body) => {
     showToast(`${title}: ${body}`);
@@ -213,7 +185,7 @@ export function AppProvider({ children }) {
         earnedMealPoints += pointsPerMeal * multiplier;
       } else if (m.status === 'skipped') {
         hasAnyAction = true;
-        earnedMealPoints += 0; // Explicit 0 points for skipped meals
+        earnedMealPoints += 0;
       }
     });
 
@@ -225,28 +197,93 @@ export function AppProvider({ children }) {
     return Math.min(98, Math.max(5, Math.round(earnedMealPoints + hydrationPoints)));
   };
 
-  const toggleMealCompleted = (mealId) => {
+  // 1-Tap Log Planned Meal for a specific slot
+  const logPlannedMeal = (slotId) => {
+    const plannedDayMeals = dietPlan?.days?.[0]?.meals || dietPlan?.meals || [];
+    const planned = plannedDayMeals.find(m => m.meal_type.toLowerCase() === slotId.toLowerCase()) || {
+      title: `${slotId.charAt(0).toUpperCase() + slotId.slice(1)} Meal`,
+      calories: slotId === 'breakfast' ? 330 : slotId === 'lunch' ? 480 : slotId === 'snack' ? 195 : 440,
+      protein_g: slotId === 'breakfast' ? 14 : slotId === 'lunch' ? 18 : slotId === 'snack' ? 8 : 22
+    };
+
     setTodayLog(prev => {
       const updatedMeals = prev.meals.map(m => {
-        if (m.id === mealId) {
-          const nextCompleted = !m.completed;
+        if (m.id.toLowerCase() === slotId.toLowerCase() || m.type.toLowerCase() === slotId.toLowerCase()) {
           return {
             ...m,
-            completed: nextCompleted,
-            status: nextCompleted ? 'completed' : 'pending',
-            diet_fit: nextCompleted ? (m.diet_fit || 'fits_plan') : null
+            name: planned.title,
+            calories: planned.calories,
+            protein: planned.protein_g,
+            completed: true,
+            status: 'completed',
+            diet_fit: 'fits_plan',
+            fit_message: `Logged planned ${slotId} (${planned.calories} kcal, ${planned.protein_g}g protein).`,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           };
         }
         return m;
       });
 
+      const completedMeals = updatedMeals.filter(m => m.status === 'completed');
+      const newCalories = completedMeals.reduce((sum, m) => sum + (m.calories || 0), 0);
+      const newProtein = Number(completedMeals.reduce((sum, m) => sum + (m.protein || 0), 0).toFixed(1));
       const newScore = recalculateDayScore(updatedMeals, prev.water_ml, macroTargets.target_water_ml);
+
       return {
         ...prev,
         meals: updatedMeals,
+        consumed_calories: newCalories,
+        consumed_protein_g: newProtein,
         score: newScore
       };
     });
+
+    showToast(`Logged planned ${planned.title} (${planned.calories} kcal)! 🥗`);
+  };
+
+  // Reset or Unlog meal
+  const unlogMeal = (mealId) => {
+    setTodayLog(prev => {
+      const updatedMeals = prev.meals.map(m => {
+        if (m.id === mealId) {
+          return {
+            ...m,
+            name: '',
+            calories: 0,
+            protein: 0,
+            completed: false,
+            status: 'pending',
+            diet_fit: null,
+            fit_message: null
+          };
+        }
+        return m;
+      });
+
+      const completedMeals = updatedMeals.filter(m => m.status === 'completed');
+      const newCalories = completedMeals.reduce((sum, m) => sum + (m.calories || 0), 0);
+      const newProtein = Number(completedMeals.reduce((sum, m) => sum + (m.protein || 0), 0).toFixed(1));
+      const newScore = recalculateDayScore(updatedMeals, prev.water_ml, macroTargets.target_water_ml);
+
+      return {
+        ...prev,
+        meals: updatedMeals,
+        consumed_calories: newCalories,
+        consumed_protein_g: newProtein,
+        score: newScore
+      };
+    });
+
+    showToast("Meal reset to unlogged.");
+  };
+
+  const toggleMealCompleted = (mealId) => {
+    const meal = todayLog.meals.find(m => m.id === mealId);
+    if (meal && (meal.status === 'completed' || meal.completed)) {
+      unlogMeal(mealId);
+    } else {
+      logPlannedMeal(mealId);
+    }
   };
 
   const skipMeal = (mealId) => {
@@ -264,11 +301,17 @@ export function AppProvider({ children }) {
         return m;
       });
 
+      const completedMeals = updatedMeals.filter(m => m.status === 'completed');
+      const newCalories = completedMeals.reduce((sum, m) => sum + (m.calories || 0), 0);
+      const newProtein = Number(completedMeals.reduce((sum, m) => sum + (m.protein || 0), 0).toFixed(1));
       const newScore = recalculateDayScore(updatedMeals, prev.water_ml, macroTargets.target_water_ml);
+      
       showToast("Meal skipped — 0 pts recorded for this time slot ⚠️");
       return {
         ...prev,
         meals: updatedMeals,
+        consumed_calories: newCalories,
+        consumed_protein_g: newProtein,
         score: newScore
       };
     });
@@ -418,6 +461,8 @@ export function AppProvider({ children }) {
       todayLog,
       calendarHistory,
       toggleMealCompleted,
+      logPlannedMeal,
+      unlogMeal,
       skipMeal,
       addWaterGlass,
       logCustomScannedMeal,

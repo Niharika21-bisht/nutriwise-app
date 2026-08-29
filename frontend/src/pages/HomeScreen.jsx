@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Sparkles, UtensilsCrossed, Plus, Droplets, ArrowRight, CheckCircle2, XCircle, Clock, Flame, Dumbbell, ShieldCheck, AlertTriangle, Edit3 } from 'lucide-react';
+import { Camera, Sparkles, UtensilsCrossed, Plus, Droplets, ArrowRight, CheckCircle2, XCircle, Clock, Flame, Dumbbell, ShieldCheck, AlertTriangle, Edit3, RotateCcw, Check } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ScoreGauge from '../components/ScoreGauge';
 import MacroProgress from '../components/MacroProgress';
@@ -10,8 +10,11 @@ export default function HomeScreen() {
   const {
     userProfile,
     macroTargets,
+    dietPlan,
     todayLog,
     toggleMealCompleted,
+    logPlannedMeal,
+    unlogMeal,
     skipMeal,
     addWaterGlass,
     setCurrentScreen,
@@ -21,9 +24,10 @@ export default function HomeScreen() {
 
   const [cameraModalOpen, setCameraModalOpen] = useState(false);
   const [cameraMode, setCameraMode] = useState('meal');
+  const [targetSlotForScan, setTargetSlotForScan] = useState('lunch');
   const [liveCurrentTime, setLiveCurrentTime] = useState(new Date());
 
-  // Real-time ticking clock (updates every second)
+  // Real-time clock
   useEffect(() => {
     const timer = setInterval(() => {
       setLiveCurrentTime(new Date());
@@ -31,14 +35,15 @@ export default function HomeScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleOpenScanner = (mode = 'meal') => {
+  const handleOpenScanner = (mode = 'meal', slotId = 'lunch') => {
     setCameraMode(mode);
+    setTargetSlotForScan(slotId);
     setCameraModalOpen(true);
   };
 
   const handleScanCompleted = async ({ foodName, scanType, image, parsedData }) => {
     setCameraModalOpen(false);
-    showToast("Analyzing scanned meal & nutrition profile... 🧠");
+    showToast(`Analyzing scanned ${targetSlotForScan}... 🧠`);
     try {
       const result = await analyzeScannedFood(
         foodName,
@@ -50,6 +55,7 @@ export default function HomeScreen() {
         parsedData
       );
       result.scannedImage = image;
+      result.preferredSlot = targetSlotForScan;
       setActiveScanResult(result);
       setCurrentScreen('food_analysis');
     } catch (err) {
@@ -64,16 +70,15 @@ export default function HomeScreen() {
     return 'Good evening';
   };
 
-  // Determine current active meal based on live real-time clock
   const getActiveMealSlotId = () => {
     const hour = liveCurrentTime.getHours();
     const minutes = liveCurrentTime.getMinutes();
     const timeVal = hour * 60 + minutes;
 
-    if (timeVal >= 300 && timeVal < 690) return 'breakfast'; // 5:00 AM - 11:30 AM
-    if (timeVal >= 690 && timeVal < 930) return 'lunch';     // 11:30 AM - 3:30 PM
-    if (timeVal >= 930 && timeVal < 1170) return 'snack';    // 3:30 PM - 7:30 PM
-    return 'dinner';                                         // 7:30 PM - 5:00 AM
+    if (timeVal >= 300 && timeVal < 690) return 'breakfast';
+    if (timeVal >= 690 && timeVal < 930) return 'lunch';
+    if (timeVal >= 930 && timeVal < 1170) return 'snack';
+    return 'dinner';
   };
 
   const activeSlotId = getActiveMealSlotId();
@@ -90,6 +95,9 @@ export default function HomeScreen() {
 
   const formattedTimeStr = liveCurrentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const formattedDateStr = liveCurrentTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+
+  // Get planned meals from Day 1 of diet plan
+  const plannedDayMeals = dietPlan?.days?.[0]?.meals || dietPlan?.meals || [];
 
   return (
     <div className="pb-28 px-4 pt-2 max-w-md mx-auto space-y-5 animate-fadeIn">
@@ -147,7 +155,7 @@ export default function HomeScreen() {
         <div className="grid grid-cols-3 gap-2.5">
           {/* Scan Food Card */}
           <button
-            onClick={() => handleOpenScanner('meal')}
+            onClick={() => handleOpenScanner('meal', activeSlotId)}
             className="p-3.5 rounded-2xl bg-white border border-slate-100 shadow-soft hover:shadow-card hover:border-emerald-200 transition-all text-left flex flex-col justify-between group"
           >
             <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -189,7 +197,7 @@ export default function HomeScreen() {
         </div>
       </div>
 
-      {/* 4. Live Today's Meal Schedule with Active Real-Time Highlight */}
+      {/* 4. Live Today's Meal Schedule with Intelligent Action Cards */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
@@ -197,7 +205,7 @@ export default function HomeScreen() {
               Live Meals Schedule
             </span>
             <span className="text-xs font-semibold text-slate-500 ml-2">
-              ({(todayLog.meals || []).filter(m => m.status === 'completed' || m.completed).length}/{(todayLog.meals || []).length} Logged)
+              ({(todayLog.meals || []).filter(m => m.status === 'completed' && m.calories > 0).length}/{(todayLog.meals || []).length} Logged)
             </span>
           </div>
           <button
@@ -211,24 +219,28 @@ export default function HomeScreen() {
 
         <div className="space-y-3">
           {(todayLog.meals || []).map((meal) => {
-            const isCompleted = meal.status === 'completed' || meal.completed;
+            const isCompleted = (meal.status === 'completed' || meal.completed) && meal.calories > 0;
             const isSkipped = meal.status === 'skipped';
             const isCurrentActiveTime = meal.id === activeSlotId && !isCompleted && !isSkipped;
+            const plannedForThisSlot = plannedDayMeals.find(m => m.meal_type.toLowerCase() === meal.id.toLowerCase());
 
             let cardBg = "bg-white border-slate-100 shadow-soft";
-            if (isCompleted) cardBg = "bg-emerald-50/60 border-emerald-200";
+            if (isCompleted) cardBg = "bg-emerald-50/70 border-emerald-300";
             if (isSkipped) cardBg = "bg-rose-50/50 border-rose-200/80 opacity-75";
             if (isCurrentActiveTime) cardBg = "bg-emerald-50/80 border-emerald-400 ring-2 ring-emerald-400/50 shadow-md";
 
             return (
               <div
                 key={meal.id}
-                className={`p-3.5 rounded-2xl border transition-all ${cardBg}`}
+                className={`p-4 rounded-3xl border transition-all space-y-2.5 ${cardBg}`}
               >
+                {/* Header Row */}
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5">
+                    {/* Status Circle Button */}
                     <button
                       onClick={() => toggleMealCompleted(meal.id)}
+                      title={isCompleted ? "Click to reset" : "Click to log planned meal"}
                       className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
                         isCompleted
                           ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
@@ -241,13 +253,13 @@ export default function HomeScreen() {
                     </button>
 
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                           {meal.type} • {meal.time || userProfile.meal_timings?.[meal.id] || "Schedule"}
                         </span>
                         {isCurrentActiveTime && (
                           <span className="text-[9px] font-black uppercase text-emerald-800 bg-emerald-200/80 px-1.5 py-0.2 rounded-full animate-pulse">
-                            🟢 Active Meal Time
+                            🟢 Active Time
                           </span>
                         )}
                         {isSkipped && (
@@ -256,51 +268,78 @@ export default function HomeScreen() {
                           </span>
                         )}
                       </div>
-                      <div
-                        onClick={() => !isCompleted && !isSkipped && handleOpenScanner('meal')}
-                        className={`text-xs font-bold cursor-pointer ${isSkipped ? 'line-through text-slate-400' : isCompleted ? 'text-slate-800' : 'text-slate-500 hover:text-emerald-700'}`}
-                      >
-                        {meal.name || `${meal.type} (Tap to Scan or Type Meal)`}
-                      </div>
+
+                      {/* Display Meal Title */}
+                      <h4 className={`text-xs font-black mt-0.5 ${
+                        isSkipped ? 'line-through text-slate-400' : isCompleted ? 'text-slate-900 font-extrabold' : 'text-slate-800'
+                      }`}>
+                        {isCompleted ? meal.name : plannedForThisSlot ? `Planned: ${plannedForThisSlot.title}` : `${meal.type} (Pending Log)`}
+                      </h4>
                     </div>
                   </div>
 
-                  {/* Right side calories & action */}
+                  {/* Right Calories */}
                   <div className="text-right flex flex-col items-end">
-                    <div className="text-xs font-extrabold text-slate-700">
-                      {isCompleted ? `${meal.calories} kcal` : isSkipped ? '0 kcal' : '—'}
+                    <div className="text-xs font-black text-slate-800">
+                      {isCompleted ? `${meal.calories} kcal` : isSkipped ? '0 kcal' : plannedForThisSlot ? `${plannedForThisSlot.calories} kcal` : '—'}
                     </div>
-                    {!isCompleted && !isSkipped && (
-                      <button
-                        onClick={() => skipMeal(meal.id)}
-                        className="text-[10px] font-bold text-rose-500 hover:text-rose-700 mt-1"
-                      >
-                        Skip Meal
-                      </button>
-                    )}
                     {isCompleted && (
-                      <span className="text-[9px] font-bold text-emerald-600 mt-0.5">
-                        ✓ Recorded
+                      <span className="text-[10px] font-bold text-emerald-700">
+                        {meal.protein}g protein
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* Diet Plan Fit Evaluation Status Banner */}
-                {isCompleted && meal.diet_fit && (
-                  <div className={`mt-2.5 pt-2 border-t text-[11px] font-semibold flex items-center gap-1.5 ${
-                    meal.diet_fit === 'fits_plan'
-                      ? 'border-emerald-200 text-emerald-800'
-                      : meal.diet_fit === 'minor_variance'
-                      ? 'border-amber-200 text-amber-800'
-                      : 'border-rose-200 text-rose-800'
-                  }`}>
-                    {meal.diet_fit === 'fits_plan' ? (
+                {/* 1. STATE: COMPLETED MEAL */}
+                {isCompleted && (
+                  <div className="pt-2 border-t border-emerald-200 flex items-center justify-between text-[11px] font-semibold text-emerald-900">
+                    <div className="flex items-center gap-1.5">
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                    ) : (
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                    )}
-                    <span className="truncate">{meal.fit_message || "Diet Plan Fit verified"}</span>
+                      <span>{meal.fit_message || "Diet Plan Fit verified"}</span>
+                    </div>
+                    <button
+                      onClick={() => unlogMeal(meal.id)}
+                      className="text-[10px] text-slate-500 hover:text-slate-800 font-bold flex items-center gap-0.5"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Reset</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* 2. STATE: PENDING MEAL ACTIONS (Log Planned OR Scan/Type) */}
+                {!isCompleted && !isSkipped && (
+                  <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                    <div className="flex gap-2">
+                      {/* 1-Tap Log Planned Meal Button */}
+                      {plannedForThisSlot && (
+                        <button
+                          onClick={() => logPlannedMeal(meal.id)}
+                          className="flex-1 py-1.5 px-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[11px] font-extrabold shadow-sm flex items-center justify-center gap-1 transition-all"
+                        >
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>Ate Planned ({plannedForThisSlot.calories} kcal)</span>
+                        </button>
+                      )}
+
+                      {/* Scan or Type Custom Food */}
+                      <button
+                        onClick={() => handleOpenScanner('meal', meal.id)}
+                        className="py-1.5 px-2.5 bg-white border border-slate-200 hover:border-emerald-300 text-slate-700 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all"
+                      >
+                        <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Scan / Type</span>
+                      </button>
+
+                      {/* Skip Meal */}
+                      <button
+                        onClick={() => skipMeal(meal.id)}
+                        className="py-1.5 px-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-[11px] font-bold transition-all"
+                      >
+                        Skip
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
