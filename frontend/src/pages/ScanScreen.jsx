@@ -238,41 +238,6 @@ export default function ScanScreen() {
         </button>
       </div>
 
-      {/* Preset Library */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-soft space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-xs font-extrabold text-slate-800 uppercase tracking-wider">
-            <Zap className="w-4 h-4 text-emerald-600" />
-            <span>Instant Demo Presets</span>
-          </div>
-          <span className="text-[10px] font-bold text-emerald-600">1-Click Test</span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2.5">
-          {SAMPLE_SCAN_PRESETS.slice(0, 4).map((preset) => (
-            <button
-              key={preset.id}
-              onClick={() => handleScanDone({ foodName: preset.name, scanType: preset.type, image: preset.image })}
-              className="p-2 rounded-2xl border border-slate-100 hover:border-emerald-400 bg-slate-50/50 hover:bg-white text-left transition-all group"
-            >
-              <img
-                src={preset.image}
-                alt={preset.name}
-                className="w-full h-20 rounded-xl object-cover group-hover:scale-[1.02] transition-transform"
-              />
-              <div className="mt-1.5 px-0.5">
-                <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">
-                  {preset.tag}
-                </span>
-                <span className="text-xs font-bold text-slate-800 truncate block">
-                  {preset.name}
-                </span>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Camera Modal component */}
       <CameraModal
         isOpen={modalOpen}

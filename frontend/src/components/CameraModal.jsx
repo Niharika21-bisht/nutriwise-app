@@ -704,33 +704,6 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
               </button>
             </div>
           )}
-
-          {/* Quick Presets */}
-          {!capturedPhoto && !manualInputMode && (
-            <div className="pt-2">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                  Or Test Sample Library
-                </span>
-                <span className="text-[10px] font-bold text-emerald-600">Instant Test</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {SAMPLE_SCAN_PRESETS.slice(0, 3).map((preset) => (
-                  <button
-                    key={preset.id}
-                    onClick={() => handleSelectPreset(preset)}
-                    className="group rounded-xl overflow-hidden border border-slate-200 hover:border-emerald-500 text-left bg-slate-50 transition-all hover:shadow-sm"
-                  >
-                    <img src={preset.image} alt={preset.name} className="w-full h-14 object-cover" />
-                    <div className="p-1.5 bg-white">
-                      <div className="text-[10px] font-bold text-slate-800 truncate">{preset.name}</div>
-                      <div className="text-[9px] text-emerald-600 font-semibold">{preset.tag}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         <input

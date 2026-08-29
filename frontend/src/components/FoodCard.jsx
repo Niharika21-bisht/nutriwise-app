@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, Flame, Dumbbell, Check, Sparkles, RefreshCw, ChevronDown, ChevronUp, CheckCircle2, MapPin } from 'lucide-react';
+import { Flame, Dumbbell, Check, Sparkles, RefreshCw, ChevronDown, ChevronUp, CheckCircle2, MapPin } from 'lucide-react';
 
 export default function FoodCard({
   mealType = "Breakfast",
@@ -9,7 +9,6 @@ export default function FoodCard({
   protein,
   carbs,
   fat,
-  prepTime = "15 mins",
   ingredients = [],
   alternatives = [],
   completed = false,
@@ -22,7 +21,6 @@ export default function FoodCard({
   const [activeProtein, setActiveProtein] = useState(protein);
   const [activeCarbs, setActiveCarbs] = useState(carbs);
   const [activeFat, setActiveFat] = useState(fat);
-  const [activePrepTime, setActivePrepTime] = useState(prepTime);
   const [activeIngredients, setActiveIngredients] = useState(ingredients);
   const [activeDescription, setActiveDescription] = useState(description);
 
@@ -32,7 +30,6 @@ export default function FoodCard({
     setActiveProtein(alt.protein_g);
     setActiveCarbs(alt.carbs_g);
     setActiveFat(alt.fat_g);
-    if (alt.prep_time) setActivePrepTime(alt.prep_time);
     if (alt.ingredients) setActiveIngredients(alt.ingredients);
     if (alt.description) setActiveDescription(alt.description);
 
@@ -59,10 +56,6 @@ export default function FoodCard({
             'bg-blue-100 text-blue-800'
           }`}>
             {mealType}
-          </span>
-          <span className="flex items-center gap-1 text-xs text-slate-400 font-medium">
-            <Clock className="w-3 h-3" />
-            {activePrepTime}
           </span>
           <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60 flex items-center gap-1">
             <MapPin className="w-2.5 h-2.5 text-emerald-600" />
@@ -191,7 +184,6 @@ export default function FoodCard({
                       <span className="text-amber-700 font-black">🔥 {alt.calories} kcal</span>
                       <span className="text-blue-700 font-black">💪 {alt.protein_g}g protein</span>
                       {alt.carbs_g && <span className="text-slate-500">🌾 {alt.carbs_g}g carbs</span>}
-                      {alt.prep_time && <span className="text-slate-400 font-semibold">⏱️ {alt.prep_time}</span>}
                     </div>
                   </div>
                 );
