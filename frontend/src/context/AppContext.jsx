@@ -33,40 +33,45 @@ export function AppProvider({ children }) {
   const [dietPlan, setDietPlan] = useState(null);
   const [loadingDietPlan, setLoadingDietPlan] = useState(false);
 
-  // Dynamic Today's Log (with skipped meal 0-point logic)
+  // Clean Fresh Today's Log (Zero Dummy Values - Strictly Real User Inputs)
   const [todayLog, setTodayLog] = useState(() => {
-    const saved = localStorage.getItem('nutriwise_today_log');
-    if (saved) return JSON.parse(saved);
+    const saved = localStorage.getItem('nutriwise_today_log_v2');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (parsed.date === todayStr) return parsed;
+      } catch (e) {}
+    }
+    // Clean morning baseline with 0 dummy values
     return {
       date: new Date().toISOString().split('T')[0],
-      score: 75,
-      water_ml: 1250,
+      score: 0,
+      water_ml: 0,
       water_target_ml: 2400,
-      consumed_calories: 810,
-      consumed_protein_g: 28.5,
-      consumed_carbs_g: 128.0,
-      consumed_fat_g: 19.5,
+      consumed_calories: 0,
+      consumed_protein_g: 0,
+      consumed_carbs_g: 0,
+      consumed_fat_g: 0,
       meals: [
-        { id: 'breakfast', type: 'Breakfast', name: 'Vegetable Poha + Low-Fat Curd', calories: 330, protein: 12.5, status: 'completed', completed: true, time: '08:30', diet_fit: 'fits_plan', fit_message: 'Matches planned breakfast target nicely' },
-        { id: 'lunch', type: 'Lunch', name: 'Dal Tadka + Steamed Rice + Sabzi', calories: 480, protein: 16.0, status: 'completed', completed: true, time: '13:15', diet_fit: 'fits_plan', fit_message: 'Optimal midday glycogen and protein balance' },
-        { id: 'snack', type: 'Snack', name: 'Seasonal Fruit & Roasted Chana', calories: 195, protein: 8.0, status: 'pending', completed: false, time: '16:30', diet_fit: null, fit_message: null },
-        { id: 'dinner', type: 'Dinner', name: 'Multigrain Roti with Paneer & Veg', calories: 440, protein: 22.0, status: 'pending', completed: false, time: '20:00', diet_fit: null, fit_message: null }
+        { id: 'breakfast', type: 'Breakfast', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '08:30', diet_fit: null, fit_message: null },
+        { id: 'lunch', type: 'Lunch', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '13:15', diet_fit: null, fit_message: null },
+        { id: 'snack', type: 'Snack', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '16:30', diet_fit: null, fit_message: null },
+        { id: 'dinner', type: 'Dinner', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '20:00', diet_fit: null, fit_message: null }
       ]
     };
   });
 
-  // Dynamic Calendar Day Scores History
+  // Clean Calendar History (Zero Dummy Values - Strictly Real Saved Logs)
   const [calendarHistory, setCalendarHistory] = useState(() => {
-    const saved = localStorage.getItem('nutriwise_calendar_history');
-    if (saved) return JSON.parse(saved);
-    // Keep 5 historic days for context
-    return {
-      22: { score: 76, status: 'moderate', meals_logged: 3, skipped: 1 },
-      23: { score: 82, status: 'good', meals_logged: 4, skipped: 0 },
-      24: { score: 78, status: 'good', meals_logged: 3, skipped: 1 },
-      25: { score: 82, status: 'good', meals_logged: 4, skipped: 0 },
-      26: { score: 76, status: 'moderate', meals_logged: 3, skipped: 1 }
-    };
+    const saved = localStorage.getItem('nutriwise_calendar_history_v2');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    // Zero hardcoded dummy days
+    return {};
   });
 
   // Active Scanned Food Item Result
@@ -86,9 +91,6 @@ export function AppProvider({ children }) {
     setTimeout(() => setToastMessage(null), 3800);
   };
 
-  // Notification Timer ref
-  const notificationTimerRef = useRef(null);
-
   // Sync to local storage
   useEffect(() => {
     localStorage.setItem('nutriwise_screen', currentScreen);
@@ -106,22 +108,28 @@ export function AppProvider({ children }) {
   }, [userProfile]);
 
   useEffect(() => {
-    localStorage.setItem('nutriwise_today_log', JSON.stringify(todayLog));
-    // Synchronize today's day 27/28/29 into calendar history dynamically
-    const currentDayNum = new Date().getDate();
-    setCalendarHistory(prev => {
-      const updated = {
-        ...prev,
-        [currentDayNum]: {
-          score: todayLog.score,
-          status: todayLog.score >= 82 ? 'optimal' : todayLog.score >= 70 ? 'good' : 'moderate',
-          meals_logged: todayLog.meals.filter(m => m.status === 'completed').length,
-          skipped: todayLog.meals.filter(m => m.status === 'skipped').length
-        }
-      };
-      localStorage.setItem('nutriwise_calendar_history', JSON.stringify(updated));
-      return updated;
-    });
+    localStorage.setItem('nutriwise_today_log_v2', JSON.stringify(todayLog));
+    
+    // Only synchronize today into calendar if the user has actually logged meals or water
+    const hasUserActivity = todayLog.meals.some(m => m.status === 'completed' || m.status === 'skipped') || todayLog.water_ml > 0;
+    
+    if (hasUserActivity) {
+      const currentDayNum = new Date().getDate();
+      setCalendarHistory(prev => {
+        const updated = {
+          ...prev,
+          [currentDayNum]: {
+            score: todayLog.score,
+            status: todayLog.score >= 82 ? 'optimal' : todayLog.score >= 70 ? 'good' : 'moderate',
+            meals_logged: todayLog.meals.filter(m => m.status === 'completed').length,
+            skipped: todayLog.meals.filter(m => m.status === 'skipped').length,
+            water_ml: todayLog.water_ml
+          }
+        };
+        localStorage.setItem('nutriwise_calendar_history_v2', JSON.stringify(updated));
+        return updated;
+      });
+    }
   }, [todayLog]);
 
   // Periodic Hydration & Meal Notifications Engine
@@ -131,12 +139,10 @@ export function AppProvider({ children }) {
         Notification.requestPermission();
       }
 
-      // Check meal reminders every minute
       const interval = setInterval(() => {
         const now = new Date();
         const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
         
-        // Match meal timings
         const timings = userProfile.meal_timings || DEFAULT_USER_PROFILE.meal_timings;
         if (currentTime === timings.breakfast) {
           triggerNotification("🍽️ Breakfast Reminder", "Time for Breakfast! Scan or mark your morning meal in NutriWise.");
@@ -189,30 +195,34 @@ export function AppProvider({ children }) {
     setCurrentScreen('welcome');
   };
 
-  // Dynamic composite score calculation:
-  // - Completed meals get up to 20 pts each (based on whether fit is good/mod/divergent)
-  // - Skipped meals explicitly get 0 points!
-  // - Hydration provides up to 20 pts
+  // Dynamic composite score calculation (Starts at 0, strictly accumulates earned points):
   const recalculateDayScore = (mealsList, waterMl, targetWater) => {
     const totalMeals = Math.max(1, mealsList.length);
     const maxMealPoints = 80;
     const pointsPerMeal = maxMealPoints / totalMeals;
 
     let earnedMealPoints = 0;
+    let hasAnyAction = false;
+
     mealsList.forEach(m => {
       if (m.status === 'completed' || m.completed) {
+        hasAnyAction = true;
         let multiplier = 1.0;
         if (m.diet_fit === 'minor_variance') multiplier = 0.85;
         if (m.diet_fit === 'divergent') multiplier = 0.65;
         earnedMealPoints += pointsPerMeal * multiplier;
       } else if (m.status === 'skipped') {
-        // Explicit 0 points for skipped meals
-        earnedMealPoints += 0;
+        hasAnyAction = true;
+        earnedMealPoints += 0; // Explicit 0 points for skipped meals
       }
     });
 
-    const hydrationPoints = Math.min(20, (waterMl / Math.max(1000, targetWater)) * 20);
-    return Math.min(98, Math.max(10, Math.round(earnedMealPoints + hydrationPoints)));
+    const hydrationPoints = Math.min(20, (waterMl / Math.max(1000, targetWater || 2400)) * 20);
+    if (waterMl > 0) hasAnyAction = true;
+
+    if (!hasAnyAction) return 0;
+
+    return Math.min(98, Math.max(5, Math.round(earnedMealPoints + hydrationPoints)));
   };
 
   const toggleMealCompleted = (mealId) => {
@@ -255,7 +265,7 @@ export function AppProvider({ children }) {
       });
 
       const newScore = recalculateDayScore(updatedMeals, prev.water_ml, macroTargets.target_water_ml);
-      showToast("Meal skipped — score adjusted to 0 pts for this slot ⚠️");
+      showToast("Meal skipped — 0 pts recorded for this time slot ⚠️");
       return {
         ...prev,
         meals: updatedMeals,
@@ -266,8 +276,8 @@ export function AppProvider({ children }) {
 
   const addWaterGlass = () => {
     setTodayLog(prev => {
-      const newWater = Math.min(prev.water_target_ml + 1000, prev.water_ml + 250);
-      const newScore = recalculateDayScore(prev.meals, newWater, prev.water_target_ml);
+      const newWater = Math.min((macroTargets.target_water_ml || 2400) + 1000, prev.water_ml + 250);
+      const newScore = recalculateDayScore(prev.meals, newWater, macroTargets.target_water_ml);
       showToast("+250ml Hydration logged! 💧");
       return {
         ...prev,
@@ -316,7 +326,6 @@ export function AppProvider({ children }) {
     const fitEval = evaluateDietPlanFit(foodItem, targetSlot);
 
     setTodayLog(prev => {
-      // Find if targetSlot exists in meals or append
       let slotUpdated = false;
       const updatedMeals = prev.meals.map(m => {
         if (m.type.toLowerCase() === targetSlot.toLowerCase() || m.id.toLowerCase() === targetSlot.toLowerCase()) {
@@ -351,8 +360,10 @@ export function AppProvider({ children }) {
         });
       }
 
-      const newCalories = prev.consumed_calories + foodItem.calories;
-      const newProtein = Number((prev.consumed_protein_g + foodItem.protein_g).toFixed(1));
+      // Sum only completed meals
+      const completedMeals = updatedMeals.filter(m => m.status === 'completed');
+      const newCalories = completedMeals.reduce((sum, m) => sum + (m.calories || 0), 0);
+      const newProtein = Number(completedMeals.reduce((sum, m) => sum + (m.protein || 0), 0).toFixed(1));
       const newScore = recalculateDayScore(updatedMeals, prev.water_ml, macroTargets.target_water_ml);
 
       return {
@@ -369,23 +380,26 @@ export function AppProvider({ children }) {
   };
 
   const resetTodayLog = () => {
+    localStorage.removeItem('nutriwise_today_log_v2');
+    localStorage.removeItem('nutriwise_calendar_history_v2');
     setTodayLog({
       date: new Date().toISOString().split('T')[0],
-      score: 50,
-      water_ml: 500,
+      score: 0,
+      water_ml: 0,
       water_target_ml: macroTargets.target_water_ml,
-      consumed_calories: 330,
-      consumed_protein_g: 12.5,
-      consumed_carbs_g: 50.0,
-      consumed_fat_g: 8.0,
+      consumed_calories: 0,
+      consumed_protein_g: 0,
+      consumed_carbs_g: 0,
+      consumed_fat_g: 0,
       meals: [
-        { id: 'breakfast', type: 'Breakfast', name: 'Vegetable Poha + Curd', calories: 330, protein: 12.5, status: 'completed', completed: true, time: '08:30', diet_fit: 'fits_plan', fit_message: 'Healthy morning meal' },
-        { id: 'lunch', type: 'Lunch', name: 'Dal Tadka + Steamed Rice', calories: 480, protein: 16.0, status: 'pending', completed: false, time: '13:15', diet_fit: null, fit_message: null },
-        { id: 'snack', type: 'Snack', name: 'Fruit & Roasted Chana', calories: 195, protein: 8.0, status: 'pending', completed: false, time: '16:30', diet_fit: null, fit_message: null },
-        { id: 'dinner', type: 'Dinner', name: 'Roti with Paneer Bhurji', calories: 440, protein: 22.0, status: 'pending', completed: false, time: '20:00', diet_fit: null, fit_message: null }
+        { id: 'breakfast', type: 'Breakfast', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '08:30', diet_fit: null, fit_message: null },
+        { id: 'lunch', type: 'Lunch', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '13:15', diet_fit: null, fit_message: null },
+        { id: 'snack', type: 'Snack', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '16:30', diet_fit: null, fit_message: null },
+        { id: 'dinner', type: 'Dinner', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '20:00', diet_fit: null, fit_message: null }
       ]
     });
-    showToast("Day reset to morning baseline!");
+    setCalendarHistory({});
+    showToast("Reset to clean day! No dummy values.");
   };
 
   return (

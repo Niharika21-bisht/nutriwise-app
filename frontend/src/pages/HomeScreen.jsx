@@ -234,8 +234,11 @@ export default function HomeScreen() {
                           </span>
                         )}
                       </div>
-                      <div className={`text-xs font-bold ${isSkipped ? 'line-through text-slate-400' : isCompleted ? 'text-slate-800' : 'text-slate-800'}`}>
-                        {meal.name}
+                      <div
+                        onClick={() => !isCompleted && !isSkipped && handleOpenScanner('meal')}
+                        className={`text-xs font-bold cursor-pointer ${isSkipped ? 'line-through text-slate-400' : isCompleted ? 'text-slate-800' : 'text-slate-500 hover:text-emerald-700'}`}
+                      >
+                        {meal.name || `${meal.type} (Tap to Scan or Type Meal)`}
                       </div>
                     </div>
                   </div>
@@ -243,7 +246,7 @@ export default function HomeScreen() {
                   {/* Right side calories & action */}
                   <div className="text-right flex flex-col items-end">
                     <div className="text-xs font-extrabold text-slate-700">
-                      {isSkipped ? '0' : meal.calories} kcal
+                      {isCompleted ? `${meal.calories} kcal` : isSkipped ? '0 kcal' : '—'}
                     </div>
                     {!isCompleted && !isSkipped && (
                       <button
