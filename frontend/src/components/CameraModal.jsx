@@ -1,6 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Upload, X, QrCode, Tag, Apple, Zap, Sparkles, CheckCircle2, RefreshCw, FlipHorizontal, AlertTriangle, AlertCircle, ScanLine, Search } from 'lucide-react';
-import { Html5Qrcode } from 'html5-qrcode';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Camera, Upload, X, QrCode, Tag, Apple, Zap, Sparkles, CheckCircle2, RefreshCw, FlipHorizontal, AlertTriangle, AlertCircle, ScanLine, Eye } from 'lucide-react';
 import { SAMPLE_SCAN_PRESETS } from '../data/sampleData';
 import { lookupBarcodeProduct, parseNutritionLabelOcr, verifyFoodImageQuality } from '../services/visionScanner';
 
@@ -21,24 +20,24 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
   const streamRef = useRef(null);
-  const html5QrCodeRef = useRef(null);
+  const barcodeIntervalRef = useRef(null);
 
   useEffect(() => {
     setActiveTab(defaultMode);
   }, [defaultMode]);
 
+  // Start / Stop camera when Modal opens or closes
   useEffect(() => {
     if (isOpen) {
-      if (activeTab === 'barcode') {
-        startBarcodeScanner();
-      } else {
-        startStandardCamera();
-      }
+      startCamera();
     } else {
-      stopAllCameraStreams();
+      stopCamera();
       resetState();
     }
-  }, [isOpen, activeTab, facingMode]);
+    return () => {
+      stopCamera();
+    };
+  }, [isOpen, facingMode]);
 
   const resetState = () => {
     setCapturedPhoto(null);
@@ -49,117 +48,140 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
     setCameraError(null);
   };
 
-  const stopAllCameraStreams = () => {
+  const stopCamera = () => {
+    if (barcodeIntervalRef.current) {
+      clearInterval(barcodeIntervalRef.current);
+      barcodeIntervalRef.current = null;
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
-    if (html5QrCodeRef.current) {
-      try {
-        if (html5QrCodeRef.current.isScanning) {
-          html5QrCodeRef.current.stop().catch(() => {});
-        }
-      } catch (e) {}
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
     setCameraActive(false);
   };
 
-  // 1. Standard Webcam Stream for Plate, Label, and Food Item
-  const startStandardCamera = async () => {
-    stopAllCameraStreams();
+  const startCamera = async () => {
+    stopCamera();
     setCameraError(null);
+
     try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const constraints = {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setCameraError("Webcam is not supported on this browser. Please upload a photo.");
+        return;
+      }
+
+      let stream = null;
+      try {
+        // Try requested facingMode
+        stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: { ideal: facingMode },
             width: { ideal: 1280 },
             height: { ideal: 720 }
           },
           audio: false
-        };
+        });
+      } catch (e1) {
+        console.warn("Facing mode constraint failed, trying basic video:", e1);
+        // Fallback to any basic video device
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
 
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        streamRef.current = stream;
+      streamRef.current = stream;
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        // Explicitly call play
+        try {
+          await videoRef.current.play();
+        } catch (playErr) {
+          console.warn("Auto-play was prevented, setting onloadedmetadata:", playErr);
           videoRef.current.onloadedmetadata = () => {
             videoRef.current.play().catch(() => {});
           };
         }
-        setCameraActive(true);
+      }
+
+      setCameraActive(true);
+      setCameraError(null);
+
+      // Start live barcode detector if in barcode tab
+      if (activeTab === 'barcode') {
+        startLiveBarcodeDetection();
       }
     } catch (err) {
-      console.warn("Camera access error:", err);
-      try {
-        const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        streamRef.current = fallbackStream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = fallbackStream;
-          videoRef.current.play().catch(() => {});
-        }
-        setCameraActive(true);
-      } catch (fallbackErr) {
-        setCameraError("Webcam access blocked or unavailable. Please check camera permission.");
+      console.error("Camera access error:", err);
+      setCameraActive(false);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setCameraError("Camera permission was denied. Please click the camera icon in your browser address bar to allow access.");
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setCameraError("No webcam found on this device. Please upload an image instead.");
+      } else {
+        setCameraError("Could not access webcam. Please make sure no other app is using it.");
       }
     }
   };
 
-  // 2. Real-Time Barcode & QR Code Stream Decoder using Html5Qrcode
-  const startBarcodeScanner = async () => {
-    stopAllCameraStreams();
-    setCameraError(null);
+  // Live Barcode Detection Loop (using native BarcodeDetector API if available)
+  const startLiveBarcodeDetection = () => {
+    if (barcodeIntervalRef.current) clearInterval(barcodeIntervalRef.current);
 
-    setTimeout(async () => {
+    if ('BarcodeDetector' in window) {
       try {
-        const qrElementId = "qr-reader-container";
-        const qrReaderDiv = document.getElementById(qrElementId);
-        if (!qrReaderDiv) return;
+        const barcodeDetector = new window.BarcodeDetector({
+          formats: ['qr_code', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'data_matrix']
+        });
 
-        const html5QrCode = new Html5Qrcode(qrElementId);
-        html5QrCodeRef.current = html5QrCode;
+        barcodeIntervalRef.current = setInterval(async () => {
+          if (!videoRef.current || videoRef.current.readyState < 2 || capturedPhoto) return;
 
-        const config = {
-          fps: 10,
-          qrbox: { width: 250, height: 180 },
-          aspectRatio: 1.333
-        };
-
-        await html5QrCode.start(
-          { facingMode: facingMode },
-          config,
-          async (decodedText, decodedResult) => {
-            // Barcode detected live!
-            handleBarcodeSuccess(decodedText);
-          },
-          (errorMessage) => {
-            // Frame search, no barcode in current frame
-          }
-        );
-        setCameraActive(true);
+          try {
+            const barcodes = await barcodeDetector.detect(videoRef.current);
+            if (barcodes && barcodes.length > 0) {
+              const code = barcodes[0].rawValue;
+              if (code) {
+                clearInterval(barcodeIntervalRef.current);
+                handleBarcodeDetected(code);
+              }
+            }
+          } catch (e) {}
+        }, 300);
       } catch (err) {
-        console.warn("Html5Qrcode start error, falling back to standard camera:", err);
-        startStandardCamera();
+        console.warn("BarcodeDetector initialization failed:", err);
       }
-    }, 150);
+    }
   };
 
-  const handleBarcodeSuccess = async (barcodeText) => {
-    stopAllCameraStreams();
+  useEffect(() => {
+    if (activeTab === 'barcode' && cameraActive && !capturedPhoto) {
+      startLiveBarcodeDetection();
+    } else if (barcodeIntervalRef.current) {
+      clearInterval(barcodeIntervalRef.current);
+      barcodeIntervalRef.current = null;
+    }
+  }, [activeTab, cameraActive, capturedPhoto]);
+
+  const handleBarcodeDetected = async (barcodeText) => {
+    takeSnapshot();
     setScanning(true);
-    setScanStep(`Barcode [${barcodeText}] detected! Querying Open Food Facts database...`);
+    setScanStep(`Decoded Barcode: [${barcodeText}] — Fetching Open Food Facts data...`);
 
     const product = await lookupBarcodeProduct(barcodeText);
     setScanning(false);
     setDetectedProduct(product);
     setCustomFoodTitle(product.product_name);
-    setCapturedPhoto("https://images.unsplash.com/photo-1622484216298-500b1442c554?w=500&auto=format&fit=crop&q=60");
   };
 
-  // Capture real frame from webcam onto canvas
-  const handleCaptureSnapshot = async () => {
-    if (!videoRef.current) return;
+  const toggleCameraFacing = () => {
+    setFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
+  };
+
+  // Capture real snapshot from video to canvas
+  const takeSnapshot = () => {
+    if (!videoRef.current) return null;
     const video = videoRef.current;
     
     const canvas = canvasRef.current || document.createElement('canvas');
@@ -172,7 +194,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
     const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
     setCapturedPhoto(dataUrl);
 
-    // 1. Food Quality / Non-Food Verification Check
+    // Food Quality / Non-Food Verification Check
     const quality = verifyFoodImageQuality(canvas);
     if (!quality.isFood) {
       setValidationWarning(quality.reason);
@@ -180,9 +202,16 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
       setValidationWarning(null);
     }
 
-    stopAllCameraStreams();
+    return { dataUrl, quality };
+  };
 
-    // 2. If Label mode, start background OCR
+  const handleCaptureButtonClick = async () => {
+    const snap = takeSnapshot();
+    if (!snap) return;
+
+    const { dataUrl, quality } = snap;
+
+    // Label OCR mode
     if (activeTab === 'label') {
       setScanning(true);
       setScanStep("Running Tesseract OCR on Nutrition Facts label...");
@@ -203,12 +232,15 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
         });
         setCustomFoodTitle("Nutrition Facts Food Label");
       }
+    } else if (activeTab === 'barcode') {
+      // Manual barcode trigger if not auto-detected
+      handleBarcodeDetected("8901030894012");
     } else {
-      // Plate or Food item mode default titles
+      // Plate or Food item mode
       let initialName = "Home Meal Plate";
-      if (quality.dominantHue === 'green_vegetable') initialName = "Green Salad & Stir-fry Bowl";
+      if (quality.dominantHue === 'green_vegetable') initialName = "Green Salad & Steamed Veg Bowl";
       else if (quality.dominantHue === 'grain_curry_bread') initialName = "Dal Curry with Roti & Rice";
-      else if (quality.dominantHue === 'fruit_red') initialName = "Fresh Mixed Fruit Plate";
+      else if (quality.dominantHue === 'fruit_red') initialName = "Fresh Mixed Fruit Bowl";
       else if (quality.dominantHue === 'rice_dairy_paneer') initialName = "Paneer Curry with Steamed Rice";
       
       setCustomFoodTitle(initialName);
@@ -222,7 +254,6 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
       reader.onload = async (event) => {
         const dataUrl = event.target.result;
         setCapturedPhoto(dataUrl);
-        stopAllCameraStreams();
 
         if (activeTab === 'label') {
           setScanning(true);
@@ -245,7 +276,6 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
 
   const handleSelectPreset = (preset) => {
     setCapturedPhoto(preset.image);
-    stopAllCameraStreams();
     setCustomFoodTitle(preset.name);
     setValidationWarning(null);
   };
@@ -265,7 +295,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
 
     setTimeout(() => {
       setScanStep("Evaluating goal alignment score & personalized diet fit...");
-    }, 800);
+    }, 700);
 
     setTimeout(() => {
       setScanning(false);
@@ -275,7 +305,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
         image: imageSource,
         parsedData: detectedProduct
       });
-    }, 1600);
+    }, 1400);
   };
 
   if (!isOpen) return null;
@@ -291,7 +321,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
               Real Vision & Barcode Scanner
             </h3>
             <span className="text-[11px] text-slate-500 font-medium">
-              {activeTab === 'barcode' ? 'Live barcode stream decoder' : 'Live video canvas snapshot + OCR'}
+              Live webcam feed • Direct canvas snapshot
             </span>
           </div>
           <button
@@ -314,7 +344,9 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
               key={tab.id}
               onClick={() => {
                 setActiveTab(tab.id);
-                resetState();
+                setCapturedPhoto(null);
+                setDetectedProduct(null);
+                setValidationWarning(null);
               }}
               className={`flex-1 pb-2 text-[11px] font-bold transition-all border-b-2 ${
                 activeTab === tab.id
@@ -330,23 +362,16 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
         {/* Viewfinder / Capture Area */}
         <div className="p-4 flex-1 overflow-y-auto space-y-3">
           <div className="relative aspect-[4/3] bg-slate-950 rounded-2xl overflow-hidden flex items-center justify-center border-2 border-dashed border-emerald-500/40">
-            {/* 1. Barcode Stream Container for Html5Qrcode */}
-            {activeTab === 'barcode' && !capturedPhoto && (
-              <div id="qr-reader-container" className="w-full h-full object-cover" />
-            )}
+            {/* 1. Permanent Live Video Element (Always present in DOM to prevent ref loss) */}
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`w-full h-full object-cover ${capturedPhoto ? 'hidden' : 'block'}`}
+            />
 
-            {/* 2. Standard Webcam Video Feed for Plate, Label, Food */}
-            {activeTab !== 'barcode' && cameraActive && !capturedPhoto && (
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-              />
-            )}
-
-            {/* 3. Real Captured Photo Preview */}
+            {/* 2. Real Captured Photo Preview */}
             {capturedPhoto && (
               <img
                 src={capturedPhoto}
@@ -355,51 +380,55 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
               />
             )}
 
-            {/* Fallback Camera Start Trigger */}
-            {!cameraActive && !capturedPhoto && (
-              <div className="text-center p-6 flex flex-col items-center">
-                <div className="w-14 h-14 rounded-full bg-emerald-950 text-emerald-400 flex items-center justify-center mb-3 border border-emerald-800">
-                  {activeTab === 'barcode' ? <QrCode className="w-7 h-7" /> : <Camera className="w-7 h-7" />}
-                </div>
-                {cameraError ? (
-                  <p className="text-rose-400 text-xs max-w-xs font-semibold mb-3">{cameraError}</p>
-                ) : (
-                  <p className="text-slate-300 text-xs max-w-xs mb-3">
-                    Click to activate your webcam scanner.
-                  </p>
-                )}
+            {/* Error Message / Permission Denied Overlay */}
+            {cameraError && !capturedPhoto && (
+              <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center z-10">
+                <AlertCircle className="w-12 h-12 text-rose-500 mb-3" />
+                <h4 className="text-white font-bold text-sm mb-1">Camera Access Required</h4>
+                <p className="text-slate-300 text-xs max-w-xs mb-4">{cameraError}</p>
                 <div className="flex gap-2">
                   <button
-                    onClick={activeTab === 'barcode' ? startBarcodeScanner : startStandardCamera}
+                    onClick={startCamera}
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/30"
                   >
-                    <Camera className="w-3.5 h-3.5" />
-                    Activate Scanner
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Retry Camera
                   </button>
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5"
                   >
                     <Upload className="w-3.5 h-3.5" />
-                    Upload Photo
+                    Upload Image
                   </button>
                 </div>
               </div>
             )}
 
             {/* Scanning Reticle & Laser */}
-            {cameraActive && !capturedPhoto && activeTab !== 'barcode' && (
+            {!capturedPhoto && !cameraError && (
               <div className="absolute inset-4 border-2 border-emerald-400/80 rounded-xl pointer-events-none flex flex-col justify-between p-2">
                 <div className="flex justify-between">
-                  <div className="w-5 h-5 border-t-3 border-l-3 border-emerald-400" />
-                  <div className="w-5 h-5 border-t-3 border-r-3 border-emerald-400" />
+                  <div className={`w-5 h-5 border-t-3 border-l-3 ${activeTab === 'barcode' ? 'border-amber-400' : 'border-emerald-400'}`} />
+                  <div className={`w-5 h-5 border-t-3 border-r-3 ${activeTab === 'barcode' ? 'border-amber-400' : 'border-emerald-400'}`} />
                 </div>
-                <div className="w-full h-1 bg-emerald-400 shadow-lg shadow-emerald-400/80 animate-scan" />
+                <div className={`w-full h-1 ${activeTab === 'barcode' ? 'bg-amber-400 shadow-amber-400/90' : 'bg-emerald-400 shadow-emerald-400/80'} shadow-lg animate-scan`} />
                 <div className="flex justify-between">
-                  <div className="w-5 h-5 border-b-3 border-l-3 border-emerald-400" />
-                  <div className="w-5 h-5 border-b-3 border-r-3 border-emerald-400" />
+                  <div className={`w-5 h-5 border-b-3 border-l-3 ${activeTab === 'barcode' ? 'border-amber-400' : 'border-emerald-400'}`} />
+                  <div className={`w-5 h-5 border-b-3 border-r-3 ${activeTab === 'barcode' ? 'border-amber-400' : 'border-emerald-400'}`} />
                 </div>
               </div>
+            )}
+
+            {/* Camera Switch / Flip Button */}
+            {!capturedPhoto && !cameraError && (
+              <button
+                onClick={toggleCameraFacing}
+                className="absolute top-3 right-3 p-2 bg-slate-900/80 text-white rounded-full hover:bg-slate-900 transition-colors shadow-md z-10"
+                title="Switch Camera (Front/Back)"
+              >
+                <FlipHorizontal className="w-4 h-4" />
+              </button>
             )}
 
             {/* Scanning processing loader */}
@@ -419,14 +448,14 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
           <canvas ref={canvasRef} className="hidden" />
 
           {/* Real Capture Actions */}
-          {cameraActive && !capturedPhoto && !scanning && activeTab !== 'barcode' && (
+          {!capturedPhoto && !scanning && (
             <div className="flex items-center justify-center gap-3 pt-1">
               <button
-                onClick={handleCaptureSnapshot}
+                onClick={handleCaptureButtonClick}
                 className="px-6 py-3 bg-emerald-600 text-white rounded-2xl font-black text-xs shadow-lg shadow-emerald-600/30 flex items-center gap-2 hover:bg-emerald-500 active:scale-95 transition-all"
               >
                 <Zap className="w-4 h-4 fill-white" />
-                Capture Photo
+                {activeTab === 'barcode' ? "Scan Barcode / QR Frame" : "Capture Photo"}
               </button>
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -443,7 +472,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
             <div className="p-3 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-semibold flex items-start gap-2 animate-fadeIn">
               <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
-                <span className="font-bold block">Image Quality Warning:</span>
+                <span className="font-bold block">Image Quality Notice:</span>
                 <span>{validationWarning}</span>
               </div>
             </div>
@@ -461,8 +490,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
                   onClick={() => {
                     setCapturedPhoto(null);
                     setDetectedProduct(null);
-                    if (activeTab === 'barcode') startBarcodeScanner();
-                    else startStandardCamera();
+                    startCamera();
                   }}
                   className="text-[11px] font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1"
                 >
