@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { Camera, Tag, Apple, QrCode, Sparkles, Upload, ArrowRight, Zap, Edit3, Search, AlertCircle, KeyRound, Check, RefreshCw } from 'lucide-react';
+import { Camera, Tag, Apple, QrCode, Sparkles, Upload, ArrowRight, Zap, Edit3, Search, AlertCircle, Check, RefreshCw } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import CameraModal from '../components/CameraModal';
 import { SAMPLE_SCAN_PRESETS } from '../data/sampleData';
 import { analyzeScannedFood } from '../services/api';
 import { validateFoodInput } from '../services/foodIntelligence';
-import { getGeminiApiKey, setGeminiApiKey } from '../services/geminiVision';
 
 export default function ScanScreen() {
   const { userProfile, todayLog, setActiveScanResult, setCurrentScreen, showToast } = useApp();
@@ -13,21 +12,10 @@ export default function ScanScreen() {
   const [selectedScanMode, setSelectedScanMode] = useState('meal');
   const [quickMealInput, setQuickMealInput] = useState("");
   const [inputError, setInputError] = useState(null);
-  
-  // Gemini API Key config drawer
-  const [keyModalOpen, setKeyModalOpen] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState(getGeminiApiKey());
 
   const openScanMode = (mode) => {
     setSelectedScanMode(mode);
     setModalOpen(true);
-  };
-
-  const handleSaveApiKey = (e) => {
-    e.preventDefault();
-    setGeminiApiKey(apiKeyInput);
-    setKeyModalOpen(false);
-    showToast("Google Gemini API Key updated! 🔑✨");
   };
 
   const handleScanDone = async ({ foodName, scanType, image, parsedData }) => {
@@ -78,28 +66,17 @@ export default function ScanScreen() {
   return (
     <div className="pb-28 px-4 pt-2 max-w-md mx-auto space-y-4 animate-fadeIn transition-colors">
       {/* Top Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-emerald-100 to-teal-100 dark:from-emerald-950/80 dark:to-teal-950/80 text-emerald-800 dark:text-emerald-300 text-[10px] font-black border border-emerald-200 dark:border-emerald-800 mb-1">
-            <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-            <span>Google Gemini Vision Enabled</span>
-          </div>
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-            AI Food & Meal Scanner
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Capture food photos or scan labels for instant calories & macro breakdown.
-          </p>
+      <div>
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-emerald-100 to-teal-100 dark:from-emerald-950/80 dark:to-teal-950/80 text-emerald-800 dark:text-emerald-300 text-[10px] font-black border border-emerald-200 dark:border-emerald-800 mb-1">
+          <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+          <span>Google Gemini Vision Enabled</span>
         </div>
-
-        <button
-          onClick={() => setKeyModalOpen(true)}
-          className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all shadow-sm flex items-center gap-1 text-[10px] font-bold"
-          title="Configure Google Gemini API Key"
-        >
-          <KeyRound className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-          <span>API Key</span>
-        </button>
+        <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+          AI Food & Meal Scanner
+        </h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          Capture food photos or scan labels for instant calories & macro breakdown.
+        </p>
       </div>
 
       {/* ✏️ Direct AI Food Search & Manual Input Box */}
@@ -261,68 +238,6 @@ export default function ScanScreen() {
           <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
         </button>
       </div>
-
-      {/* Google Gemini API Key Modal */}
-      {keyModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-5 shadow-2xl border border-slate-100 dark:border-slate-800 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">Google Gemini Vision API</h3>
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Configured & Active</span>
-                </div>
-              </div>
-              <button onClick={() => setKeyModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white text-xs font-bold px-2 py-1">
-                ✕
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              NutriWise is connected to <strong>Google Gemini 2.0 Flash Multimodal Vision</strong> for high-accuracy Indian & global food recognition.
-            </p>
-
-            <form onSubmit={handleSaveApiKey} className="space-y-3">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Gemini API Key:
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                  placeholder="Enter your Gemini API key (AIzaSy...)"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-mono text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500/20 bg-slate-50 dark:bg-slate-800"
-                />
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setApiKeyInput("");
-                    setGeminiApiKey("");
-                    showToast("Cleared API key ✨");
-                  }}
-                  className="py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
-                >
-                  Clear Key
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-bold shadow-md shadow-emerald-600/30 hover:opacity-95"
-                >
-                  Save API Key
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Camera Modal component */}
       <CameraModal
