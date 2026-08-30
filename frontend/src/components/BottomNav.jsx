@@ -19,7 +19,7 @@ export default function BottomNav() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto px-4 pb-4 pointer-events-none">
-      <nav className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200/80 shadow-floating px-3 py-2 flex items-center justify-around pointer-events-auto">
+      <nav className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-floating px-3 py-2 flex items-center justify-around pointer-events-auto transition-colors duration-200">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentScreen === item.id;
@@ -34,7 +34,7 @@ export default function BottomNav() {
                 <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white p-3.5 shadow-lg shadow-emerald-500/30 group-hover:scale-105 group-active:scale-95 transition-all duration-200 flex items-center justify-center">
                   <Icon className="w-6 h-6 stroke-[2.2]" />
                 </div>
-                <span className="text-[11px] font-bold text-emerald-700 mt-1">Scan</span>
+                <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 mt-1">Scan</span>
               </button>
             );
           }
@@ -45,8 +45,8 @@ export default function BottomNav() {
               onClick={() => setCurrentScreen(item.id)}
               className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all duration-200 ${
                 isActive
-                  ? 'text-emerald-600 font-bold scale-105'
-                  : 'text-slate-400 hover:text-slate-600 font-medium'
+                  ? 'text-emerald-600 dark:text-emerald-400 font-bold scale-105'
+                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 font-medium'
               }`}
             >
               <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />

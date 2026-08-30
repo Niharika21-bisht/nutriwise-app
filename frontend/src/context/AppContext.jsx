@@ -1,28 +1,100 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { DEFAULT_USER_PROFILE } from '../data/sampleData';
-import { fetchProfileTargets, fetchDietPlan, calculateClientTargets } from '../services/api';
+import { fetchDietPlan, calculateClientTargets } from '../services/api';
+import { generateAvatarUrl } from '../services/googleAuth';
 
 const AppContext = createContext();
 
+// Helper to sanitize email for localStorage keys
+const getUserKey = (email) => {
+  if (!email) return 'guest';
+  return email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+};
+
+const createDefaultTodayLog = () => ({
+  date: new Date().toISOString().split('T')[0],
+  score: 0,
+  water_ml: 0,
+  water_target_ml: 2500,
+  steps: 0,
+  step_target: 10000,
+  meals: [
+    { id: 'breakfast', type: 'Breakfast', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '08:30', diet_fit: null, fit_message: null },
+    { id: 'lunch', type: 'Lunch', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '13:15', diet_fit: null, fit_message: null },
+    { id: 'snack', type: 'Snack', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '16:30', diet_fit: null, fit_message: null },
+    { id: 'dinner', type: 'Dinner', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '20:00', diet_fit: null, fit_message: null }
+  ]
+});
+
+const createDefaultGamification = () => ({
+  xp: 100,
+  level: 1,
+  level_name: "Nutrition Rookie",
+  active_challenges: {
+    'hydration_7day': { joined: true, current_day: 1, total_days: 7, completed: false, last_logged_date: null },
+    'veggie_boost': { joined: true, current_day: 1, total_days: 7, completed: false, last_logged_date: null }
+  },
+  vegetables_tracked: [],
+  unlocked_badges: [
+    { id: 'welcome_badge', title: 'NutriWise Explorer', icon: '🌟', desc: 'Joined NutriWise with Google account' }
+  ]
+});
+
 export function AppProvider({ children }) {
+  // Active User Profile / Session
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('nutriwise_active_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  // Logged-in State (Mandatory Login: false if no active user)
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    try {
+      const session = localStorage.getItem('nutriwise_session');
+      const activeUser = localStorage.getItem('nutriwise_active_user');
+      return Boolean(session && JSON.parse(session) && activeUser);
+    } catch (e) {
+      return false;
+    }
+  });
+
   // Navigation Screen State
   const [currentScreen, setCurrentScreen] = useState(() => {
-    return localStorage.getItem('nutriwise_screen') || 'welcome';
-  });
-
-  // Logged-in Session State
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    const savedScreen = localStorage.getItem('nutriwise_screen');
     const session = localStorage.getItem('nutriwise_session');
-    return session ? JSON.parse(session) : true;
+    const activeUser = localStorage.getItem('nutriwise_active_user');
+    const logged = Boolean(session && JSON.parse(session) && activeUser);
+
+    if (!logged) {
+      return ['welcome', 'auth'].includes(savedScreen) ? savedScreen : 'welcome';
+    }
+    return savedScreen || 'home';
   });
 
-  // User Profile
+  // User Profile (Scoped by active user)
   const [userProfile, setUserProfile] = useState(() => {
-    const saved = localStorage.getItem('nutriwise_profile');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return { ...DEFAULT_USER_PROFILE, ...parsed };
-    }
+    try {
+      const activeUser = localStorage.getItem('nutriwise_active_user');
+      if (activeUser) {
+        const u = JSON.parse(activeUser);
+        const key = getUserKey(u.email);
+        const saved = localStorage.getItem(`nutriwise_profile_${key}`);
+        if (saved) {
+          return { ...DEFAULT_USER_PROFILE, ...JSON.parse(saved) };
+        }
+        return {
+          ...DEFAULT_USER_PROFILE,
+          name: u.name || 'User',
+          email: u.email,
+          profile_image: u.picture || generateAvatarUrl(u.name, u.email),
+          auth_provider: u.provider || 'google'
+        };
+      }
+    } catch (e) {}
     return DEFAULT_USER_PROFILE;
   });
 
@@ -33,69 +105,50 @@ export function AppProvider({ children }) {
   const [dietPlan, setDietPlan] = useState(null);
   const [loadingDietPlan, setLoadingDietPlan] = useState(false);
 
-  // Clean Fresh Today's Log (Zero Dummy Values - Strictly Real User Inputs)
+  // Today's Log (Scoped by active user)
   const [todayLog, setTodayLog] = useState(() => {
-    const saved = localStorage.getItem('nutriwise_today_log_v2');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const todayStr = new Date().toISOString().split('T')[0];
-        if (parsed.date === todayStr) return parsed;
-      } catch (e) {}
-    }
-    return {
-      date: new Date().toISOString().split('T')[0],
-      score: 0,
-      water_ml: 0,
-      water_target_ml: 2400,
-      consumed_calories: 0,
-      consumed_protein_g: 0,
-      consumed_carbs_g: 0,
-      consumed_fat_g: 0,
-      meals: [
-        { id: 'breakfast', type: 'Breakfast', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '08:30', diet_fit: null, fit_message: null },
-        { id: 'lunch', type: 'Lunch', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '13:15', diet_fit: null, fit_message: null },
-        { id: 'snack', type: 'Snack', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '16:30', diet_fit: null, fit_message: null },
-        { id: 'dinner', type: 'Dinner', name: '', calories: 0, protein: 0, status: 'pending', completed: false, time: '20:00', diet_fit: null, fit_message: null }
-      ]
-    };
+    try {
+      const activeUser = localStorage.getItem('nutriwise_active_user');
+      if (activeUser) {
+        const u = JSON.parse(activeUser);
+        const key = getUserKey(u.email);
+        const saved = localStorage.getItem(`nutriwise_today_log_${key}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const todayStr = new Date().toISOString().split('T')[0];
+          if (parsed.date === todayStr) return parsed;
+        }
+      }
+    } catch (e) {}
+    return createDefaultTodayLog();
   });
 
-  // Clean Calendar History (Zero Dummy Values)
+  // Calendar History (Scoped by active user)
   const [calendarHistory, setCalendarHistory] = useState(() => {
-    const saved = localStorage.getItem('nutriwise_calendar_history_v2');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {}
-    }
+    try {
+      const activeUser = localStorage.getItem('nutriwise_active_user');
+      if (activeUser) {
+        const u = JSON.parse(activeUser);
+        const key = getUserKey(u.email);
+        const saved = localStorage.getItem(`nutriwise_calendar_history_${key}`);
+        if (saved) return JSON.parse(saved);
+      }
+    } catch (e) {}
     return {};
   });
 
-  // Gamification & Challenges State
+  // Gamification & Challenges State (Scoped by active user)
   const [userGamification, setUserGamification] = useState(() => {
-    const saved = localStorage.getItem('nutriwise_gamification');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {}
-    }
-    return {
-      xp: 280,
-      level: 2,
-      level_name: "Habit Builder",
-      active_challenges: {
-        'hydration_7day': { joined: true, current_day: 3, total_days: 7, completed: false, last_logged_date: null },
-        'veggie_boost': { joined: true, current_day: 2, total_days: 7, completed: false, last_logged_date: null }
-      },
-      vegetables_tracked: [
-        "Spinach (Palak)", "Tomato", "Cucumber", "Green Peas", "Bhindi (Okra)", "Carrots"
-      ],
-      unlocked_badges: [
-        { id: 'first_scan', title: 'First Food Scan', icon: '📸', desc: 'Analyzed first meal with AI ML classifier' },
-        { id: 'hydration_streak', title: 'Hydration Starter', icon: '💧', desc: 'Hit 2.4L water goal' }
-      ]
-    };
+    try {
+      const activeUser = localStorage.getItem('nutriwise_active_user');
+      if (activeUser) {
+        const u = JSON.parse(activeUser);
+        const key = getUserKey(u.email);
+        const saved = localStorage.getItem(`nutriwise_gamification_${key}`);
+        if (saved) return JSON.parse(saved);
+      }
+    } catch (e) {}
+    return createDefaultGamification();
   });
 
   // Active Scanned Food Item Result
@@ -110,54 +163,231 @@ export function AppProvider({ children }) {
   // Toasts
   const [toastMessage, setToastMessage] = useState(null);
 
-  const showToast = (msg) => {
+  const showToast = useCallback((msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3800);
+  }, []);
+
+  // Theme State: 'light' or 'dark'
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem('nutriwise_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+    } catch (e) {}
+    return 'light';
+  });
+
+  const toggleTheme = () => {
+    setTheme(prev => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      showToast(next === 'dark' ? 'Dark mode enabled 🌙' : 'Light mode enabled ☀️');
+      return next;
+    });
   };
 
-  // Sync to local storage
+  const setThemeMode = (mode) => {
+    if (mode === 'dark' || mode === 'light') {
+      setTheme(mode);
+      showToast(mode === 'dark' ? 'Dark mode enabled 🌙' : 'Light mode enabled ☀️');
+    }
+  };
+
+  // Sync theme class to document.documentElement
+  useEffect(() => {
+    try {
+      localStorage.setItem('nutriwise_theme', theme);
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } catch (e) {}
+  }, [theme]);
+
+  // Sync current screen to localStorage
   useEffect(() => {
     localStorage.setItem('nutriwise_screen', currentScreen);
   }, [currentScreen]);
 
+  // Sync session state
   useEffect(() => {
     localStorage.setItem('nutriwise_session', JSON.stringify(isLoggedIn));
   }, [isLoggedIn]);
 
+  // Sync user profile to localStorage (User Scoped)
   useEffect(() => {
-    localStorage.setItem('nutriwise_profile', JSON.stringify(userProfile));
+    if (currentUser?.email) {
+      const key = getUserKey(currentUser.email);
+      localStorage.setItem(`nutriwise_profile_${key}`, JSON.stringify(userProfile));
+    }
     const targets = calculateClientTargets(userProfile);
     setMacroTargets(targets);
     refreshDietPlan(userProfile);
-  }, [userProfile]);
+  }, [userProfile, currentUser]);
 
+  // Sync today's log and calendar history (User Scoped)
   useEffect(() => {
-    localStorage.setItem('nutriwise_today_log_v2', JSON.stringify(todayLog));
-    
-    const hasUserActivity = (todayLog.meals || []).some(m => m.status === 'completed' || m.status === 'skipped') || todayLog.water_ml > 0;
-    
-    if (hasUserActivity) {
-      const currentDayNum = new Date().getDate();
-      setCalendarHistory(prev => {
-        const updated = {
-          ...prev,
-          [currentDayNum]: {
-            score: todayLog.score,
-            status: todayLog.score >= 82 ? 'optimal' : todayLog.score >= 70 ? 'good' : 'moderate',
-            meals_logged: (todayLog.meals || []).filter(m => m.status === 'completed').length,
-            skipped: (todayLog.meals || []).filter(m => m.status === 'skipped').length,
-            water_ml: todayLog.water_ml
-          }
-        };
-        localStorage.setItem('nutriwise_calendar_history_v2', JSON.stringify(updated));
-        return updated;
-      });
+    if (currentUser?.email) {
+      const key = getUserKey(currentUser.email);
+      localStorage.setItem(`nutriwise_today_log_${key}`, JSON.stringify(todayLog));
+
+      const hasUserActivity = (todayLog.meals || []).some(m => m.status === 'completed' || m.status === 'skipped') || todayLog.water_ml > 0;
+
+      if (hasUserActivity) {
+        const currentDayNum = new Date().getDate();
+        setCalendarHistory(prev => {
+          const updated = {
+            ...prev,
+            [currentDayNum]: {
+              score: todayLog.score,
+              status: todayLog.score >= 82 ? 'optimal' : todayLog.score >= 70 ? 'good' : 'moderate',
+              meals_logged: (todayLog.meals || []).filter(m => m.status === 'completed').length,
+              skipped: (todayLog.meals || []).filter(m => m.status === 'skipped').length,
+              water_ml: todayLog.water_ml
+            }
+          };
+          localStorage.setItem(`nutriwise_calendar_history_${key}`, JSON.stringify(updated));
+          return updated;
+        });
+      }
     }
-  }, [todayLog]);
+  }, [todayLog, currentUser]);
 
+  // Sync gamification (User Scoped)
   useEffect(() => {
-    localStorage.setItem('nutriwise_gamification', JSON.stringify(userGamification));
-  }, [userGamification]);
+    if (currentUser?.email) {
+      const key = getUserKey(currentUser.email);
+      localStorage.setItem(`nutriwise_gamification_${key}`, JSON.stringify(userGamification));
+    }
+  }, [userGamification, currentUser]);
+
+  // Load a user's isolated data upon switching or logging in
+  const loadUserData = (userData) => {
+    const key = getUserKey(userData.email);
+
+    // 1. Profile
+    const savedProfile = localStorage.getItem(`nutriwise_profile_${key}`);
+    let loadedProfile;
+    if (savedProfile) {
+      loadedProfile = { ...DEFAULT_USER_PROFILE, ...JSON.parse(savedProfile) };
+    } else {
+      loadedProfile = {
+        ...DEFAULT_USER_PROFILE,
+        name: userData.name || 'User',
+        email: userData.email,
+        profile_image: userData.picture || generateAvatarUrl(userData.name, userData.email),
+        auth_provider: userData.provider || 'google'
+      };
+      localStorage.setItem(`nutriwise_profile_${key}`, JSON.stringify(loadedProfile));
+    }
+    setUserProfile(loadedProfile);
+
+    // 2. Today Log
+    const savedLog = localStorage.getItem(`nutriwise_today_log_${key}`);
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (savedLog) {
+      try {
+        const parsed = JSON.parse(savedLog);
+        if (parsed.date === todayStr) {
+          setTodayLog(parsed);
+        } else {
+          const freshLog = createDefaultTodayLog();
+          setTodayLog(freshLog);
+          localStorage.setItem(`nutriwise_today_log_${key}`, JSON.stringify(freshLog));
+        }
+      } catch (e) {
+        setTodayLog(createDefaultTodayLog());
+      }
+    } else {
+      const freshLog = createDefaultTodayLog();
+      setTodayLog(freshLog);
+      localStorage.setItem(`nutriwise_today_log_${key}`, JSON.stringify(freshLog));
+    }
+
+    // 3. Calendar History
+    const savedCal = localStorage.getItem(`nutriwise_calendar_history_${key}`);
+    if (savedCal) {
+      try {
+        setCalendarHistory(JSON.parse(savedCal));
+      } catch (e) {
+        setCalendarHistory({});
+      }
+    } else {
+      setCalendarHistory({});
+    }
+
+    // 4. Gamification
+    const savedGam = localStorage.getItem(`nutriwise_gamification_${key}`);
+    if (savedGam) {
+      try {
+        setUserGamification(JSON.parse(savedGam));
+      } catch (e) {
+        setUserGamification(createDefaultGamification());
+      }
+    } else {
+      const freshGam = createDefaultGamification();
+      setUserGamification(freshGam);
+      localStorage.setItem(`nutriwise_gamification_${key}`, JSON.stringify(freshGam));
+    }
+  };
+
+  // Google Login Handler
+  const loginWithGoogle = (googleUserData) => {
+    const formattedUser = {
+      email: googleUserData.email.toLowerCase().trim(),
+      name: googleUserData.name || googleUserData.email.split('@')[0],
+      picture: googleUserData.picture || generateAvatarUrl(googleUserData.name, googleUserData.email),
+      googleId: googleUserData.sub || googleUserData.googleId || `g_${Date.now()}`,
+      provider: 'google'
+    };
+
+    // Save active user
+    localStorage.setItem('nutriwise_active_user', JSON.stringify(formattedUser));
+    localStorage.setItem('nutriwise_session', JSON.stringify(true));
+    setCurrentUser(formattedUser);
+    setIsLoggedIn(true);
+
+    // Load data for this user
+    loadUserData(formattedUser);
+
+    const key = getUserKey(formattedUser.email);
+    const existingProfile = localStorage.getItem(`nutriwise_profile_${key}`);
+
+    // Check if new user or existing
+    if (!existingProfile) {
+      showToast(`Welcome to NutriWise, ${formattedUser.name}! Let's personalize your goals 🚀`);
+      setCurrentScreen('questionnaire');
+    } else {
+      showToast(`Welcome back, ${formattedUser.name}! 👋 Google connected`);
+      setCurrentScreen('home');
+    }
+  };
+
+  // Standard Login/Signup Handler
+  const loginWithCredentials = (userData, isSignUp = false) => {
+    const formattedUser = {
+      email: userData.email.toLowerCase().trim(),
+      name: userData.name || userData.email.split('@')[0],
+      picture: userData.picture || generateAvatarUrl(userData.name, userData.email),
+      provider: 'email'
+    };
+
+    localStorage.setItem('nutriwise_active_user', JSON.stringify(formattedUser));
+    localStorage.setItem('nutriwise_session', JSON.stringify(true));
+    setCurrentUser(formattedUser);
+    setIsLoggedIn(true);
+
+    loadUserData(formattedUser);
+
+    if (isSignUp) {
+      showToast("Account created successfully! Welcome to NutriWise 🚀");
+      setCurrentScreen('questionnaire');
+    } else {
+      showToast(`Welcome back, ${formattedUser.name}! 👋`);
+      setCurrentScreen('home');
+    }
+  };
 
   const refreshDietPlan = async (profile) => {
     setLoadingDietPlan(true);
@@ -172,13 +402,26 @@ export function AppProvider({ children }) {
   };
 
   const updateProfile = (updatedFields) => {
-    setUserProfile(prev => ({ ...prev, ...updatedFields }));
+    setUserProfile(prev => {
+      const updated = { ...prev, ...updatedFields };
+      if (currentUser?.email) {
+        const key = getUserKey(currentUser.email);
+        localStorage.setItem(`nutriwise_profile_${key}`, JSON.stringify(updated));
+      }
+      return updated;
+    });
     showToast("Profile & recommendations updated! ✨");
   };
 
   const logout = () => {
     setIsLoggedIn(false);
+    setCurrentUser(null);
     localStorage.removeItem('nutriwise_session');
+    localStorage.removeItem('nutriwise_active_user');
+    setUserProfile(DEFAULT_USER_PROFILE);
+    setTodayLog(createDefaultTodayLog());
+    setCalendarHistory({});
+    setUserGamification(createDefaultGamification());
     showToast("Logged out successfully 👋");
     setCurrentScreen('welcome');
   };
@@ -254,7 +497,6 @@ export function AppProvider({ children }) {
       };
     });
 
-    // Award Gamification XP
     awardXP(30, `Logged planned ${slotId}`);
     showToast(`Logged planned ${planned.title} (${planned.calories} kcal)! 🥗 +30 XP`);
   };
@@ -335,18 +577,151 @@ export function AppProvider({ children }) {
     });
   };
 
-  const addWaterGlass = () => {
+  const addWaterAmount = (amountMl = 250) => {
     setTodayLog(prev => {
-      const newWater = Math.min((macroTargets.target_water_ml || 2400) + 1000, prev.water_ml + 250);
+      const newWater = Math.min((macroTargets.target_water_ml || 2500) + 2000, (prev.water_ml || 0) + amountMl);
       const newScore = recalculateDayScore(prev.meals, newWater, macroTargets.target_water_ml);
-      showToast("+250ml Hydration logged! 💧 +10 XP");
-      awardXP(10, "Logged hydration");
+      showToast(`+${amountMl}ml Hydration logged! 💧 +15 XP`);
+      awardXP(15, "Logged hydration");
       return {
         ...prev,
         water_ml: newWater,
         score: newScore
       };
     });
+  };
+
+  const removeWaterAmount = (amountMl = 250) => {
+    setTodayLog(prev => {
+      const newWater = Math.max(0, (prev.water_ml || 0) - amountMl);
+      const newScore = recalculateDayScore(prev.meals, newWater, macroTargets.target_water_ml);
+      showToast(`-${amountMl}ml Hydration removed`);
+      return {
+        ...prev,
+        water_ml: newWater,
+        score: newScore
+      };
+    });
+  };
+
+  const addProteinAmount = (amountG = 10) => {
+    setTodayLog(prev => {
+      const newProtein = Number(((prev.consumed_protein_g || 0) + amountG).toFixed(1));
+      const newScore = recalculateDayScore(prev.meals, prev.water_ml, macroTargets.target_water_ml);
+      showToast(`+${amountG}g Protein logged! 💪 +20 XP`);
+      awardXP(20, "Logged protein fuel");
+      return {
+        ...prev,
+        consumed_protein_g: newProtein,
+        score: newScore
+      };
+    });
+  };
+
+  const removeProteinAmount = (amountG = 10) => {
+    setTodayLog(prev => {
+      const newProtein = Math.max(0, Number(((prev.consumed_protein_g || 0) - amountG).toFixed(1)));
+      const newScore = recalculateDayScore(prev.meals, prev.water_ml, macroTargets.target_water_ml);
+      showToast(`-${amountG}g Protein removed`);
+      return {
+        ...prev,
+        consumed_protein_g: newProtein,
+        score: newScore
+      };
+    });
+  };
+
+  const addMealBalanceBoost = (boostType, points = 15, title = "Nutrient Boost") => {
+    setTodayLog(prev => {
+      const currentBalance = prev.meal_balance !== undefined ? prev.meal_balance : ((prev.score || 0) >= 80 ? 88 : (prev.score || 0) > 0 ? 65 : 45);
+      const newBalance = Math.min(100, currentBalance + points);
+      const newScore = Math.min(99, (prev.score || 0) + Math.round(points / 3));
+      showToast(`+${points}% ${title} applied! 🥗 +25 XP`);
+      awardXP(25, `Applied ${title}`);
+      return {
+        ...prev,
+        meal_balance: newBalance,
+        score: newScore
+      };
+    });
+  };
+
+  const updateProteinTarget = (targetG) => {
+    const num = Number(targetG);
+    if (!isNaN(num) && num >= 30 && num <= 300) {
+      setMacroTargets(prev => ({
+        ...prev,
+        target_protein_g: num
+      }));
+      showToast(`Daily protein target updated to ${num}g! 🏋️✨`);
+    }
+  };
+
+  const updateWaterTarget = (targetMl) => {
+    const num = Number(targetMl);
+    if (!isNaN(num) && num >= 500 && num <= 6000) {
+      setMacroTargets(prev => ({
+        ...prev,
+        target_water_ml: num
+      }));
+      setTodayLog(prev => ({
+        ...prev,
+        water_target_ml: num,
+        score: recalculateDayScore(prev.meals, prev.water_ml, num)
+      }));
+      showToast(`Daily water target updated to ${num}ml! 💧✨`);
+    }
+  };
+
+  const addSteps = (stepCount = 1000) => {
+    setTodayLog(prev => {
+      const newSteps = (prev.steps || 0) + stepCount;
+      const xpEarned = Math.round(stepCount / 100);
+      showToast(`+${stepCount.toLocaleString()} Steps logged! 👟 +${xpEarned} XP`);
+      awardXP(xpEarned, "Logged walking steps");
+      return {
+        ...prev,
+        steps: newSteps
+      };
+    });
+  };
+
+  const updateStepTarget = (targetSteps = 10000) => {
+    setTodayLog(prev => ({
+      ...prev,
+      step_target: targetSteps
+    }));
+    showToast(`Daily step goal set to ${targetSteps.toLocaleString()} steps! 🎯`);
+  };
+
+  const get7DayWaterData = () => {
+    const days = [
+      { date: '24/08', label: '24/08', fullDate: '24/08/2026', amount: 0 },
+      { date: '25/08', label: '25/08', fullDate: '25/08/2026', amount: 0 },
+      { date: '26/08', label: '26/08', fullDate: '26/08/2026', amount: 0 },
+      { date: '27/08', label: '27/08', fullDate: '27/08/2026', amount: 0 },
+      { date: '28/08', label: '28/08', fullDate: '28/08/2026', amount: 0 },
+      { date: '29/08', label: '29/08', fullDate: '29/08/2026', amount: 0 },
+      { date: '30/08', label: '30/08', fullDate: '30/08/2026', amount: todayLog.water_ml || 0, isToday: true }
+    ];
+    return days;
+  };
+
+  const get7DayStepData = () => {
+    const days = [
+      { date: '30/08', label: '30/08', fullDate: '30/08/2026', steps: todayLog.steps || 0, isToday: true },
+      { date: '31/08', label: '31/08', fullDate: '31/08/2026', steps: 0 },
+      { date: '01/09', label: '01/09', fullDate: '01/09/2026', steps: 0 },
+      { date: '02/09', label: '02/09', fullDate: '02/09/2026', steps: 0 },
+      { date: '03/09', label: '03/09', fullDate: '03/09/2026', steps: 0 },
+      { date: '04/09', label: '04/09', fullDate: '04/09/2026', steps: 0 },
+      { date: '05/09', label: '05/09', fullDate: '05/09/2026', steps: 0 }
+    ];
+    return days;
+  };
+
+  const addWaterGlass = () => {
+    addWaterAmount(250);
   };
 
   const logCustomScannedMeal = (foodItem, targetSlot = 'lunch') => {
@@ -512,8 +887,10 @@ export function AppProvider({ children }) {
     <AppContext.Provider value={{
       currentScreen,
       setCurrentScreen,
+      currentUser,
       isLoggedIn,
-      setIsLoggedIn,
+      loginWithGoogle,
+      loginWithCredentials,
       logout,
       userProfile,
       setUserProfile,
@@ -533,6 +910,17 @@ export function AppProvider({ children }) {
       unlogMeal,
       skipMeal,
       addWaterGlass,
+      addWaterAmount,
+      removeWaterAmount,
+      updateWaterTarget,
+      addProteinAmount,
+      removeProteinAmount,
+      updateProteinTarget,
+      addMealBalanceBoost,
+      addSteps,
+      updateStepTarget,
+      get7DayWaterData,
+      get7DayStepData,
       logCustomScannedMeal,
       activeScanResult,
       setActiveScanResult,
@@ -540,6 +928,9 @@ export function AppProvider({ children }) {
       setActiveMealUpgrade,
       viewportMode,
       setViewportMode,
+      theme,
+      toggleTheme,
+      setThemeMode,
       toastMessage,
       showToast
     }}>

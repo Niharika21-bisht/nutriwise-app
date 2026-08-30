@@ -102,30 +102,30 @@ export default function HomeScreen() {
   return (
     <div className="pb-28 px-4 pt-2 max-w-md mx-auto space-y-5 animate-fadeIn">
       {/* Live Time & Date Status Pill */}
-      <div className="flex items-center justify-between bg-white px-3.5 py-1.5 rounded-2xl border border-slate-200 shadow-sm text-xs font-bold">
+      <div className="flex items-center justify-between bg-white dark:bg-slate-900 px-3.5 py-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm text-xs font-bold transition-colors">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-          <span className="text-emerald-700 uppercase tracking-wider font-extrabold text-[10px]">
+          <span className="text-emerald-700 dark:text-emerald-400 uppercase tracking-wider font-extrabold text-[10px]">
             Live Sync
           </span>
-          <span className="text-slate-700 font-extrabold">{formattedTimeStr}</span>
+          <span className="text-slate-700 dark:text-slate-200 font-extrabold">{formattedTimeStr}</span>
         </div>
-        <span className="text-slate-500 text-[11px] font-semibold">{formattedDateStr}</span>
+        <span className="text-slate-500 dark:text-slate-400 text-[11px] font-semibold">{formattedDateStr}</span>
       </div>
 
       {/* User Greeting Bar with Avatar */}
       <div className="flex items-center justify-between">
         <div>
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
             {getTimeGreeting()}
           </span>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             {userProfile.name || 'Niharika'} 👋
           </h2>
         </div>
         <button
           onClick={() => setCurrentScreen('profile')}
-          className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 hover:scale-105 transition-transform overflow-hidden border-2 border-white"
+          className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 hover:scale-105 transition-transform overflow-hidden border-2 border-white dark:border-slate-800"
         >
           {renderAvatar()}
         </button>
@@ -149,49 +149,49 @@ export default function HomeScreen() {
 
       {/* 3. Quick Action Cards */}
       <div className="space-y-2">
-        <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+        <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
           Live Input Actions
         </span>
         <div className="grid grid-cols-3 gap-2.5">
           {/* Scan Food Card */}
           <button
             onClick={() => handleOpenScanner('meal', activeSlotId)}
-            className="p-3.5 rounded-2xl bg-white border border-slate-100 shadow-soft hover:shadow-card hover:border-emerald-200 transition-all text-left flex flex-col justify-between group"
+            className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-soft hover:shadow-card hover:border-emerald-200 dark:hover:border-emerald-600 transition-all text-left flex flex-col justify-between group"
           >
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
               <Camera className="w-5 h-5" />
             </div>
             <div className="mt-3">
-              <div className="text-xs font-bold text-slate-800">Scan Meal</div>
-              <div className="text-[10px] text-slate-400 font-medium">Camera / OCR</div>
+              <div className="text-xs font-bold text-slate-800 dark:text-slate-100">Scan Meal</div>
+              <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Camera / OCR</div>
             </div>
           </button>
 
           {/* Type Meal Name Card */}
           <button
             onClick={() => setCurrentScreen('scan')}
-            className="p-3.5 rounded-2xl bg-white border border-slate-100 shadow-soft hover:shadow-card hover:border-teal-200 transition-all text-left flex flex-col justify-between group"
+            className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-soft hover:shadow-card hover:border-teal-200 dark:hover:border-teal-600 transition-all text-left flex flex-col justify-between group"
           >
-            <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center group-hover:scale-110 transition-transform">
               <Edit3 className="w-5 h-5" />
             </div>
             <div className="mt-3">
-              <div className="text-xs font-bold text-slate-800">Type Dish</div>
-              <div className="text-[10px] text-slate-400 font-medium">AI Input</div>
+              <div className="text-xs font-bold text-slate-800 dark:text-slate-100">Type Dish</div>
+              <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">AI Input</div>
             </div>
           </button>
 
-          {/* Quick Water Button */}
+          {/* Water Tracker Action Card */}
           <button
-            onClick={addWaterGlass}
-            className="p-3.5 rounded-2xl bg-white border border-slate-100 shadow-soft hover:shadow-card hover:border-cyan-200 transition-all text-left flex flex-col justify-between group"
+            onClick={() => setCurrentScreen('water_tracker')}
+            className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-soft hover:shadow-card hover:border-cyan-200 dark:hover:border-cyan-600 transition-all text-left flex flex-col justify-between group"
           >
-            <div className="w-9 h-9 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <div className="w-9 h-9 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 text-cyan-600 dark:text-cyan-400 flex items-center justify-center group-hover:scale-110 transition-transform">
               <Droplets className="w-5 h-5" />
             </div>
             <div className="mt-3">
-              <div className="text-xs font-bold text-slate-800">+250ml Water</div>
-              <div className="text-[10px] text-cyan-600 font-bold">1-Tap Log</div>
+              <div className="text-xs font-bold text-slate-800 dark:text-slate-100">Water Log</div>
+              <div className="text-[10px] text-cyan-600 dark:text-cyan-400 font-bold">Open Tracker ➔</div>
             </div>
           </button>
         </div>
@@ -224,10 +224,10 @@ export default function HomeScreen() {
             const isCurrentActiveTime = meal.id === activeSlotId && !isCompleted && !isSkipped;
             const plannedForThisSlot = plannedDayMeals.find(m => m.meal_type.toLowerCase() === meal.id.toLowerCase());
 
-            let cardBg = "bg-white border-slate-100 shadow-soft";
-            if (isCompleted) cardBg = "bg-emerald-50/70 border-emerald-300";
-            if (isSkipped) cardBg = "bg-rose-50/50 border-rose-200/80 opacity-75";
-            if (isCurrentActiveTime) cardBg = "bg-emerald-50/80 border-emerald-400 ring-2 ring-emerald-400/50 shadow-md";
+            let cardBg = "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 shadow-soft";
+            if (isCompleted) cardBg = "bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800";
+            if (isSkipped) cardBg = "bg-rose-50/50 dark:bg-rose-950/30 border-rose-200/80 dark:border-rose-900/40 opacity-75";
+            if (isCurrentActiveTime) cardBg = "bg-emerald-50/80 dark:bg-emerald-950/60 border-emerald-400 dark:border-emerald-500 ring-2 ring-emerald-400/50 shadow-md";
 
             return (
               <div
@@ -246,7 +246,7 @@ export default function HomeScreen() {
                           ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
                           : isSkipped
                           ? 'bg-rose-500 text-white'
-                          : 'border-2 border-slate-300 text-transparent hover:border-emerald-500'
+                          : 'border-2 border-slate-300 dark:border-slate-600 text-transparent hover:border-emerald-500'
                       }`}
                     >
                       {isSkipped ? <XCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
@@ -254,16 +254,16 @@ export default function HomeScreen() {
 
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                           {meal.type} • {meal.time || userProfile.meal_timings?.[meal.id] || "Schedule"}
                         </span>
                         {isCurrentActiveTime && (
-                          <span className="text-[9px] font-black uppercase text-emerald-800 bg-emerald-200/80 px-1.5 py-0.2 rounded-full animate-pulse">
+                          <span className="text-[9px] font-black uppercase text-emerald-800 dark:text-emerald-300 bg-emerald-200/80 dark:bg-emerald-900/80 px-1.5 py-0.2 rounded-full animate-pulse">
                             🟢 Active Time
                           </span>
                         )}
                         {isSkipped && (
-                          <span className="text-[9px] font-black uppercase text-rose-700 bg-rose-100 px-1.5 py-0.2 rounded">
+                          <span className="text-[9px] font-black uppercase text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-900/80 px-1.5 py-0.2 rounded">
                             Skipped (0 pts)
                           </span>
                         )}
@@ -271,7 +271,7 @@ export default function HomeScreen() {
 
                       {/* Display Meal Title */}
                       <h4 className={`text-xs font-black mt-0.5 ${
-                        isSkipped ? 'line-through text-slate-400' : isCompleted ? 'text-slate-900 font-extrabold' : 'text-slate-800'
+                        isSkipped ? 'line-through text-slate-400 dark:text-slate-500' : isCompleted ? 'text-slate-900 dark:text-white font-extrabold' : 'text-slate-800 dark:text-slate-100'
                       }`}>
                         {isCompleted ? meal.name : plannedForThisSlot ? `Planned: ${plannedForThisSlot.title}` : `${meal.type} (Pending Log)`}
                       </h4>
@@ -280,11 +280,11 @@ export default function HomeScreen() {
 
                   {/* Right Calories */}
                   <div className="text-right flex flex-col items-end">
-                    <div className="text-xs font-black text-slate-800">
+                    <div className="text-xs font-black text-slate-800 dark:text-slate-100">
                       {isCompleted ? `${meal.calories} kcal` : isSkipped ? '0 kcal' : plannedForThisSlot ? `${plannedForThisSlot.calories} kcal` : '—'}
                     </div>
                     {isCompleted && (
-                      <span className="text-[10px] font-bold text-emerald-700">
+                      <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
                         {meal.protein}g protein
                       </span>
                     )}
@@ -293,14 +293,14 @@ export default function HomeScreen() {
 
                 {/* 1. STATE: COMPLETED MEAL */}
                 {isCompleted && (
-                  <div className="pt-2 border-t border-emerald-200 flex items-center justify-between text-[11px] font-semibold text-emerald-900">
+                  <div className="pt-2 border-t border-emerald-200 dark:border-emerald-900/60 flex items-center justify-between text-[11px] font-semibold text-emerald-900 dark:text-emerald-300">
                     <div className="flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                       <span>{meal.fit_message || "Diet Plan Fit verified"}</span>
                     </div>
                     <button
                       onClick={() => unlogMeal(meal.id)}
-                      className="text-[10px] text-slate-500 hover:text-slate-800 font-bold flex items-center gap-0.5"
+                      className="text-[10px] text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold flex items-center gap-0.5"
                     >
                       <RotateCcw className="w-3 h-3" />
                       <span>Reset</span>
@@ -310,7 +310,7 @@ export default function HomeScreen() {
 
                 {/* 2. STATE: PENDING MEAL ACTIONS (Log Planned OR Scan/Type) */}
                 {!isCompleted && !isSkipped && (
-                  <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
                     <div className="flex gap-2">
                       {/* 1-Tap Log Planned Meal Button */}
                       {plannedForThisSlot && (
@@ -326,16 +326,16 @@ export default function HomeScreen() {
                       {/* Scan or Type Custom Food */}
                       <button
                         onClick={() => handleOpenScanner('meal', meal.id)}
-                        className="py-1.5 px-2.5 bg-white border border-slate-200 hover:border-emerald-300 text-slate-700 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all"
+                        className="py-1.5 px-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-500 text-slate-700 dark:text-slate-200 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all"
                       >
-                        <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                        <Camera className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                         <span>Scan / Type</span>
                       </button>
 
                       {/* Skip Meal */}
                       <button
                         onClick={() => skipMeal(meal.id)}
-                        className="py-1.5 px-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-[11px] font-bold transition-all"
+                        className="py-1.5 px-2 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 rounded-xl text-[11px] font-bold transition-all"
                       >
                         Skip
                       </button>

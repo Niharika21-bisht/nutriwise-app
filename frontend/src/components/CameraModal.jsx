@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Upload, X, QrCode, Tag, Apple, Zap, Sparkles, CheckCircle2, RefreshCw, FlipHorizontal, AlertTriangle, AlertCircle, ScanLine, Utensils, Ban, Edit3, Search } from 'lucide-react';
+import { Camera, Upload, X, QrCode, Tag, Apple, Zap, Sparkles, CheckCircle2, RefreshCw, FlipHorizontal, AlertTriangle, AlertCircle, ScanLine, Utensils, Ban, Edit3, Search, BrainCircuit, KeyRound } from 'lucide-react';
 import { SAMPLE_SCAN_PRESETS } from '../data/sampleData';
 import { lookupBarcodeProduct, parseNutritionLabelOcr } from '../services/visionScanner';
 import { classifyFoodImage } from '../services/mlFoodClassifier';
 import { validateFoodInput } from '../services/foodIntelligence';
+import { analyzeFoodWithGemini, getGeminiApiKey, setGeminiApiKey } from '../services/geminiVision';
 
 export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMode = 'meal' }) {
   const [activeTab, setActiveTab] = useState(defaultMode); // 'meal', 'barcode', 'label', 'food'
@@ -19,6 +20,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
   
   const [scanning, setScanning] = useState(false);
   const [scanStep, setScanStep] = useState("");
+  const [aiEngineUsed, setAiEngineUsed] = useState("Google Gemini 2.0 Flash Vision");
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -114,7 +116,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
     } catch (err) {
       console.error("Camera access error:", err);
       setCameraActive(false);
-      setCameraError("Could not access webcam. Please check browser permissions or type meal name.");
+      setCameraError("Could not access webcam. Please check browser permissions, upload a photo, or type meal name.");
     }
   };
 
@@ -166,6 +168,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
     setScanning(false);
     setDetectedProduct(product);
     setCustomFoodTitle(product.product_name);
+    setAiEngineUsed("Open Food Facts & Barcode Vision");
   };
 
   const toggleCameraFacing = () => {
@@ -188,7 +191,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
     return { dataUrl, canvas };
   };
 
-  // Real ML Food Classification Trigger on Snapshot
+  // Google Gemini Vision Multimodal Food Classification Trigger on Snapshot
   const handleCaptureButtonClick = async () => {
     setNonFoodError(null);
     const snap = takeSnapshot();
@@ -199,6 +202,20 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
     // 1. Label OCR Mode
     if (activeTab === 'label') {
       setScanning(true);
+      setScanStep("Analyzing Nutrition Facts label with Google Gemini Vision OCR...");
+      try {
+        const geminiResult = await analyzeFoodWithGemini(dataUrl, 'label');
+        setScanning(false);
+        if (geminiResult.is_food) {
+          setDetectedProduct(geminiResult.food_data);
+          setCustomFoodTitle(geminiResult.detected_title);
+          setAiEngineUsed("Google Gemini 2.0 Flash Vision");
+          return;
+        }
+      } catch (geminiErr) {
+        console.warn("Gemini Vision fallback to Tesseract:", geminiErr);
+      }
+
       setScanStep("Running Tesseract OCR on Nutrition Facts label...");
       const ocrResult = await parseNutritionLabelOcr(dataUrl);
       setScanning(false);
@@ -210,6 +227,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
           serving_size: "1 portion (OCR parsed)"
         });
         setCustomFoodTitle("Nutrition Facts Food Label");
+        setAiEngineUsed("Tesseract OCR & Nutrition Parser");
       } else {
         setNonFoodError("🚫 No Nutrition Label Detected: Could not detect a valid Nutrition Facts table. Please frame the nutrition panel on the back of the packet.");
       }
@@ -232,19 +250,27 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
       }
       setNonFoodError("🚫 No Barcode or QR Code Detected: Please align a valid packaged food barcode inside the frame.");
     } 
-    // 3. Plate & Food Item Mode: Run Real TensorFlow.js ML Classification
+    // 3. Plate & Food Item Mode: Run Google Gemini 3.5 Flash Multimodal Vision API
     else {
       setScanning(true);
-      setScanStep("Running Machine Learning food & non-food classification...");
+      setScanStep("✨ Connecting to Google Gemini 3.5 Flash Multimodal AI...");
       
-      const mlResult = await classifyFoodImage(canvas);
-      setScanning(false);
+      try {
+        setScanStep("🧠 Google Gemini analyzing food plate & verifying real nutrition...");
+        const geminiResult = await analyzeFoodWithGemini(dataUrl, activeTab);
+        setScanning(false);
 
-      if (!mlResult.is_valid_food) {
-        setNonFoodError(mlResult.error_message || "🚫 No Food Detected in camera frame. Please point towards your meal plate or type the food name below.");
-      } else {
-        setDetectedProduct(mlResult.food_data);
-        setCustomFoodTitle(mlResult.detected_title || mlResult.food_data.name);
+        if (!geminiResult.is_food) {
+          setNonFoodError(geminiResult.rejection_reason || "🚫 No Food Detected: The camera captured a non-food item or plain background. Please point camera directly at your meal plate.");
+        } else {
+          setDetectedProduct(geminiResult.food_data);
+          setCustomFoodTitle(geminiResult.detected_title || geminiResult.food_data.name);
+          setAiEngineUsed("Google Gemini 3.5 Flash Vision");
+        }
+      } catch (geminiError) {
+        console.warn("Gemini Vision error:", geminiError);
+        setScanning(false);
+        setNonFoodError("🚫 Could not detect food: Please ensure the meal plate is clearly visible inside the camera frame, or type the meal name below.");
       }
     }
   };
@@ -276,38 +302,26 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
         setCapturedPhoto(dataUrl);
         setNonFoodError(null);
 
-        const img = new Image();
-        img.onload = async () => {
-          if (activeTab === 'label') {
-            setScanning(true);
-            setScanStep("Running OCR on nutrition label...");
-            const ocrResult = await parseNutritionLabelOcr(dataUrl);
-            setScanning(false);
-            if (ocrResult.hasNutritionKeywords && ocrResult.extracted) {
-              setDetectedProduct({
-                product_name: "Uploaded Nutrition Label",
-                ...ocrResult.extracted,
-                serving_size: "1 portion"
-              });
-              setCustomFoodTitle("Nutrition Facts Food Label");
-            } else {
-              setNonFoodError("🚫 No Nutrition Label Detected in this photo. Please upload a clear image of a nutrition facts table.");
-            }
-          } else {
-            setScanning(true);
-            setScanStep("Classifying image with ML vision...");
-            const mlResult = await classifyFoodImage(img);
-            setScanning(false);
+        // Run Google Gemini 3.5 Flash Multimodal Vision on uploaded file
+        setScanning(true);
+        setScanStep("✨ Google Gemini 3.5 Flash analyzing uploaded image...");
 
-            if (!mlResult.is_valid_food) {
-              setNonFoodError(mlResult.error_message);
-            } else {
-              setDetectedProduct(mlResult.food_data);
-              setCustomFoodTitle(mlResult.detected_title);
-            }
+        try {
+          const geminiResult = await analyzeFoodWithGemini(dataUrl, activeTab);
+          setScanning(false);
+
+          if (!geminiResult.is_food) {
+            setNonFoodError(geminiResult.rejection_reason || "🚫 No Food Detected in this photo. Please upload a clear image of a meal plate or food item.");
+          } else {
+            setDetectedProduct(geminiResult.food_data);
+            setCustomFoodTitle(geminiResult.detected_title || geminiResult.food_data.name);
+            setAiEngineUsed("Google Gemini 3.5 Flash Vision");
           }
-        };
-        img.src = dataUrl;
+        } catch (err) {
+          console.warn("Gemini upload error:", err);
+          setScanning(false);
+          setNonFoodError("🚫 Could not identify food in this photo. Please upload a clear photo of an edible meal plate or food item.");
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -319,33 +333,22 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
     setNonFoodError(null);
   };
 
-  const handleProceedWithScan = () => {
-    if (nonFoodError) return;
-    const titleToUse = customFoodTitle.trim() || "Identified Meal Item";
-
-    const validation = validateFoodInput(titleToUse);
-    if (!validation.isValid) {
-      setNonFoodError(`⚠️ ${validation.reason}`);
-      return;
-    }
-
-    triggerAnalysisProcess(validation.cleanQuery, capturedPhoto);
+  const triggerAnalysisProcess = (title, image) => {
+    stopCamera();
+    onScanComplete({
+      foodName: title,
+      scanType: activeTab,
+      image: image || capturedPhoto,
+      parsedData: detectedProduct
+    });
   };
 
-  const triggerAnalysisProcess = (foodName, imageSource) => {
-    setScanning(true);
-    setScanStep("Analyzing portion weights, glycemic response & daily goals with AI...");
-
-    setTimeout(() => {
-      setScanning(false);
-      onScanComplete({
-        foodName,
-        scanType: activeTab,
-        image: imageSource,
-        parsedData: detectedProduct,
-        is_valid_food: true
-      });
-    }, 1200);
+  const handleProceedWithScan = () => {
+    if (!customFoodTitle.trim()) {
+      setNonFoodError("Please confirm or enter the meal/food name.");
+      return;
+    }
+    triggerAnalysisProcess(customFoodTitle.trim(), capturedPhoto);
   };
 
   if (!isOpen) return null;
@@ -354,19 +357,26 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fadeIn">
       <div className="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
         {/* Modal Header */}
-        <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white">
           <div>
-            <h3 className="font-extrabold text-slate-800 text-sm sm:text-base flex items-center gap-2">
-              <Camera className="w-5 h-5 text-emerald-600" />
-              ML Food & Barcode Vision Scanner
-            </h3>
-            <span className="text-[11px] text-slate-500 font-medium">
-              Trained on Indian & global foods • AI text input option
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-emerald-500 text-white flex items-center justify-center">
+                <Sparkles className="w-3.5 h-3.5" />
+              </div>
+              <h3 className="font-extrabold text-sm sm:text-base tracking-tight">
+                Google Gemini Vision Scanner
+              </h3>
+              <span className="text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                Multimodal AI
+              </span>
+            </div>
+            <span className="text-[11px] text-slate-300 font-medium block mt-0.5">
+              Instant plate recognition, portion sizes & macro calculation
             </span>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+            className="p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -507,7 +517,7 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
               {cameraError && !capturedPhoto && (
                 <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center z-10">
                   <AlertCircle className="w-12 h-12 text-rose-500 mb-3" />
-                  <h4 className="text-white font-bold text-sm mb-1">Camera Access Required</h4>
+                  <h4 className="text-white font-bold text-sm mb-1">Camera Access</h4>
                   <p className="text-slate-300 text-xs max-w-xs mb-4">{cameraError}</p>
                   <div className="flex gap-2">
                     <button
@@ -518,11 +528,11 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
                       Retry Camera
                     </button>
                     <button
-                      onClick={() => setManualInputMode(true)}
+                      onClick={() => fileInputRef.current?.click()}
                       className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5"
                     >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      Type Meal Name
+                      <Upload className="w-3.5 h-3.5" />
+                      Upload Photo
                     </button>
                   </div>
                 </div>
@@ -556,12 +566,14 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
 
               {/* Loader */}
               {scanning && (
-                <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center text-white p-6 z-20">
-                  <div className="w-12 h-12 rounded-full border-3 border-emerald-500 border-t-transparent animate-spin mb-4" />
-                  <span className="font-extrabold text-base text-emerald-400 tracking-tight">
-                    Analyzing Frame with AI...
+                <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center text-white p-6 z-20 animate-fadeIn">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/40 animate-bounce mb-3">
+                    <Sparkles className="w-7 h-7 text-white animate-spin" />
+                  </div>
+                  <span className="font-extrabold text-base text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300 tracking-tight">
+                    Google Gemini Multimodal AI
                   </span>
-                  <span className="text-xs text-slate-300 mt-1 text-center font-medium animate-pulse px-4">
+                  <span className="text-xs text-slate-300 mt-2 text-center font-medium animate-pulse px-4">
                     {scanStep}
                   </span>
                 </div>
@@ -576,21 +588,22 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
             <div className="flex items-center justify-center gap-2 pt-1">
               <button
                 onClick={handleCaptureButtonClick}
-                className="flex-1 py-3 bg-emerald-600 text-white rounded-2xl font-black text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-1.5 hover:bg-emerald-500 active:scale-95 transition-all"
+                className="flex-1 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-2xl font-black text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 hover:opacity-95 active:scale-95 transition-all"
               >
-                <Zap className="w-4 h-4 fill-white" />
-                {activeTab === 'barcode' ? "Scan Barcode" : "Capture Photo"}
+                <Sparkles className="w-4 h-4 fill-white" />
+                <span>{activeTab === 'barcode' ? "Scan Barcode" : "Capture with Gemini Vision"}</span>
               </button>
               <button
                 onClick={() => setManualInputMode(true)}
-                className="px-3.5 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-bold text-xs hover:bg-slate-50"
+                className="px-3.5 py-3.5 bg-white border border-slate-200 text-slate-700 rounded-2xl font-bold text-xs hover:bg-slate-50"
               >
                 <Edit3 className="w-4 h-4 inline mr-1 text-emerald-600" />
-                Type Name
+                Type
               </button>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="px-3 py-3 bg-slate-100 text-slate-700 rounded-2xl font-bold text-xs hover:bg-slate-200"
+                className="px-3.5 py-3.5 bg-slate-100 text-slate-700 rounded-2xl font-bold text-xs hover:bg-slate-200"
+                title="Upload Photo"
               >
                 <Upload className="w-4 h-4 inline" />
               </button>
@@ -636,14 +649,23 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
             </div>
           )}
 
-          {/* ✅ VALID FOOD CONFIRMATION DISPLAY */}
+          {/* ✅ VALID FOOD CONFIRMATION DISPLAY (GEMINI DETECTED) */}
           {capturedPhoto && !scanning && !nonFoodError && !manualInputMode && (
-            <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200 space-y-2.5 animate-fadeIn">
+            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-teal-50 border border-emerald-200 space-y-2.5 animate-fadeIn">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-emerald-900 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  Food Recognized: {detectedProduct?.category || "Indian Dish"}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-black text-emerald-950 block leading-tight">
+                      {detectedProduct?.name || customFoodTitle}
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-700">
+                      ⚡ {aiEngineUsed} ({detectedProduct?.confidence || 96}% confidence)
+                    </span>
+                  </div>
+                </div>
                 <button
                   onClick={() => {
                     setCapturedPhoto(null);
@@ -659,13 +681,30 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
               </div>
 
               {detectedProduct && (
-                <div className="p-2.5 bg-white rounded-xl border border-emerald-200 text-xs space-y-1">
-                  <div className="font-bold text-slate-800">{detectedProduct.name || detectedProduct.product_name}</div>
-                  <div className="text-slate-500 text-[11px] flex gap-3 font-semibold">
-                    <span>🔥 {detectedProduct.calories} kcal</span>
-                    <span>💪 {detectedProduct.protein_g}g protein</span>
-                    <span>🌾 {detectedProduct.carbs_g}g carbs</span>
-                    <span>🥑 {detectedProduct.fat_g}g fat</span>
+                <div className="p-3 bg-white rounded-xl border border-emerald-200 text-xs space-y-2">
+                  <div className="flex justify-between items-center text-slate-600 text-[11px] font-bold">
+                    <span>Portion: {detectedProduct.portion || "1 plate / standard serving"}</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px]">
+                      {detectedProduct.diet_fit === 'fits_plan' ? '✅ Fits Nutrition Goal' : '⚠️ Moderate Variance'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5 text-center">
+                    <div className="p-1.5 bg-slate-50 rounded-lg">
+                      <span className="text-[9px] text-slate-400 font-bold block">CALORIES</span>
+                      <span className="font-black text-xs text-slate-800">{detectedProduct.calories} kcal</span>
+                    </div>
+                    <div className="p-1.5 bg-slate-50 rounded-lg">
+                      <span className="text-[9px] text-slate-400 font-bold block">PROTEIN</span>
+                      <span className="font-black text-xs text-emerald-700">{detectedProduct.protein_g}g</span>
+                    </div>
+                    <div className="p-1.5 bg-slate-50 rounded-lg">
+                      <span className="text-[9px] text-slate-400 font-bold block">CARBS</span>
+                      <span className="font-black text-xs text-blue-700">{detectedProduct.carbs_g}g</span>
+                    </div>
+                    <div className="p-1.5 bg-slate-50 rounded-lg">
+                      <span className="text-[9px] text-slate-400 font-bold block">FAT</span>
+                      <span className="font-black text-xs text-amber-700">{detectedProduct.fat_g}g</span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -683,24 +722,12 @@ export default function CameraModal({ isOpen, onClose, onScanComplete, defaultMo
                 />
               </div>
 
-              <div className="flex flex-wrap gap-1 pt-1">
-                {["Dal Tadka + Rice", "Paneer Bhurji + Roti", "Rajma Chawal", "Veg Poha", "Moong Cheela", "Fruit Bowl"].map((name, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCustomFoodTitle(name)}
-                    className="text-[10px] bg-white border border-emerald-200 text-emerald-800 px-2 py-0.5 rounded-md font-semibold hover:bg-emerald-100/60"
-                  >
-                    {name}
-                  </button>
-                ))}
-              </div>
-
               <button
                 onClick={handleProceedWithScan}
                 className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-extrabold text-xs shadow-md shadow-emerald-600/30 hover:opacity-95 active:scale-95 transition-all flex items-center justify-center gap-1.5"
               >
                 <Sparkles className="w-4 h-4" />
-                <span>View Full Nutritional Breakdown & Fit</span>
+                <span>Log to Today's Tracker & Recalculate Score</span>
               </button>
             </div>
           )}

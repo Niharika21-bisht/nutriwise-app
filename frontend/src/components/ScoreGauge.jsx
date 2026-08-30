@@ -29,23 +29,23 @@ export default function ScoreGauge({ score = 78, delta = 6, label = "Today's Nut
   }
 
   return (
-    <div className="bg-gradient-to-br from-white to-emerald-50/40 p-5 rounded-3xl border border-emerald-100/80 shadow-soft relative overflow-hidden">
+    <div className="bg-gradient-to-br from-white to-emerald-50/40 dark:from-slate-900 dark:to-emerald-950/30 p-5 rounded-3xl border border-emerald-100/80 dark:border-emerald-900/40 shadow-soft relative overflow-hidden transition-colors">
       {/* Decorative subtle background circle */}
-      <div className="absolute -right-8 -top-8 w-32 h-32 bg-emerald-100/30 rounded-full blur-2xl pointer-events-none" />
+      <div className="absolute -right-8 -top-8 w-32 h-32 bg-emerald-100/30 dark:bg-emerald-900/20 rounded-full blur-2xl pointer-events-none" />
 
       <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
             <Flame className="w-3.5 h-3.5 text-emerald-500" />
             {label}
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-4xl font-extrabold text-slate-800 tracking-tight">{score}</span>
-            <span className="text-sm font-semibold text-slate-400">/ 100</span>
+            <span className="text-4xl font-extrabold text-slate-800 dark:text-white tracking-tight">{score}</span>
+            <span className="text-sm font-semibold text-slate-400 dark:text-slate-500">/ 100</span>
           </div>
 
           <div className="flex items-center gap-2 mt-2">
-            <div className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+            <div className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-800">
               <ArrowUpRight className="w-3 h-3" />
               +{delta}% vs yesterday
             </div>
@@ -63,7 +63,7 @@ export default function ScoreGauge({ score = 78, delta = 6, label = "Today's Nut
               cx="56"
               cy="56"
               r={radius}
-              className="stroke-slate-100"
+              className="stroke-slate-100 dark:stroke-slate-800"
               strokeWidth="8"
               fill="transparent"
             />
@@ -81,8 +81,8 @@ export default function ScoreGauge({ score = 78, delta = 6, label = "Today's Nut
             />
           </svg>
           <div className="absolute flex flex-col items-center justify-center">
-            <Award className="w-6 h-6 text-emerald-600 mb-0.5" />
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Health</span>
+            <Award className="w-6 h-6 text-emerald-600 dark:text-emerald-400 mb-0.5" />
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Health</span>
           </div>
         </div>
       </div>

@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-800 font-sans;
+    @apply bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans transition-colors duration-200;
     -webkit-tap-highlight-color: transparent;
   }
 }
@@ -24,8 +24,16 @@
   border-radius: 9999px;
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
 
 /* Smooth view transitions */
@@ -63,3 +71,63 @@
 .animate-scan {
   animation: scan-line 2.2s ease-in-out infinite;
 }
+
+/* Liquid Water Wave Animations */
+@keyframes wave-front {
+  0% {
+    transform: translateX(0) translateZ(0) scaleY(1);
+  }
+  50% {
+    transform: translateX(-25%) translateZ(0) scaleY(1.05);
+  }
+  100% {
+    transform: translateX(-50%) translateZ(0) scaleY(1);
+  }
+}
+
+@keyframes wave-back {
+  0% {
+    transform: translateX(-50%) translateZ(0) scaleY(1);
+  }
+  50% {
+    transform: translateX(-25%) translateZ(0) scaleY(0.95);
+  }
+  100% {
+    transform: translateX(0) translateZ(0) scaleY(1);
+  }
+}
+
+.animate-wave-front {
+  animation: wave-front 4s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite;
+}
+
+.animate-wave-back {
+  animation: wave-back 6s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite;
+}
+
+@keyframes bubble-rise {
+  0% {
+    transform: translateY(100%) scale(0.6);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-120%) scale(1.1);
+    opacity: 0;
+  }
+}
+
+.animate-bubble-1 {
+  animation: bubble-rise 3s ease-in infinite;
+}
+
+.animate-bubble-2 {
+  animation: bubble-rise 4s ease-in infinite 1s;
+}
+
+.animate-bubble-3 {
+  animation: bubble-rise 3.5s ease-in infinite 2s;
+}
+

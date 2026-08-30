@@ -97,14 +97,14 @@ export default function DietPlanScreen() {
   };
 
   return (
-    <div className="pb-28 px-4 pt-2 max-w-md mx-auto space-y-5 animate-fadeIn">
+    <div className="pb-28 px-4 pt-2 max-w-md mx-auto space-y-5 animate-fadeIn transition-colors">
       {/* Top Header */}
       <div className="flex items-center justify-between">
         <div>
-          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
             7-Day Weekly Blueprint
           </span>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             Next Week Diet Plan
           </h2>
         </div>
@@ -112,37 +112,37 @@ export default function DietPlanScreen() {
         <button
           onClick={handleRegenerate}
           disabled={loadingDietPlan}
-          className="p-2.5 rounded-2xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95 shadow-sm transition-all flex items-center gap-1.5 text-xs font-bold"
+          className="p-2.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95 shadow-sm transition-all flex items-center gap-1.5 text-xs font-bold"
         >
-          <RefreshCw className={`w-3.5 h-3.5 text-emerald-600 ${loadingDietPlan ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 ${loadingDietPlan ? 'animate-spin' : ''}`} />
           <span>Refresh</span>
         </button>
       </div>
 
       {/* Main Switcher: 7-Day Meal Plan vs Next Week Grocery Checklist */}
-      <div className="bg-slate-100 p-1 rounded-2xl flex">
+      <div className="bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl flex border border-slate-200/60 dark:border-slate-700">
         <button
           onClick={() => setActiveTabSection('plan')}
           className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
             activeTabSection === 'plan'
-              ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/60'
-              : 'text-slate-500 hover:text-slate-800'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm ring-1 ring-slate-200/60 dark:ring-slate-700'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
         >
-          <UtensilsCrossed className="w-3.5 h-3.5 text-emerald-600" />
+          <UtensilsCrossed className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
           <span>7-Day Meal Schedule</span>
         </button>
         <button
           onClick={() => setActiveTabSection('groceries')}
           className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
             activeTabSection === 'groceries'
-              ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/60'
-              : 'text-slate-500 hover:text-slate-800'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm ring-1 ring-slate-200/60 dark:ring-slate-700'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
         >
-          <ShoppingBag className="w-3.5 h-3.5 text-emerald-600" />
+          <ShoppingBag className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
           <span>Next Week Groceries</span>
-          <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-1.5 py-0.2 rounded-full">
+          <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-extrabold px-1.5 py-0.2 rounded-full">
             {checkedCount}/{allGroceryItems.length}
           </span>
         </button>
@@ -160,7 +160,7 @@ export default function DietPlanScreen() {
                 className={`min-w-[50px] flex-1 py-2 px-1 rounded-2xl text-xs font-extrabold transition-all flex flex-col items-center justify-center border ${
                   selectedDayTab === day.day_number
                     ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/30'
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
                 }`}
               >
                 <span className="text-[10px] uppercase font-bold opacity-80">{day.day_name.slice(0, 3)}</span>
@@ -241,12 +241,12 @@ export default function DietPlanScreen() {
           </div>
 
           {/* Advance Prep Tips */}
-          <div className="bg-amber-50/70 border border-amber-200/80 p-4 rounded-3xl space-y-2">
-            <div className="flex items-center gap-2 text-xs font-black text-amber-900">
-              <Calendar className="w-4 h-4 text-amber-700" />
+          <div className="bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/80 p-4 rounded-3xl space-y-2">
+            <div className="flex items-center gap-2 text-xs font-black text-amber-900 dark:text-amber-200">
+              <Calendar className="w-4 h-4 text-amber-700 dark:text-amber-400" />
               <span>Advance Meal Prep Strategy</span>
             </div>
-            <ul className="space-y-1.5 text-xs text-amber-800">
+            <ul className="space-y-1.5 text-xs text-amber-800 dark:text-amber-300">
               {(dietPlan?.advance_prep_tips || [
                 "Soak Rajma / Kidney beans on Monday night for Tuesday's high-protein lunch.",
                 "Start sprouting green moong on Tuesday for Wednesday's live enzyme sprout bowl."
@@ -262,32 +262,32 @@ export default function DietPlanScreen() {
       {activeTabSection === 'groceries' && (
         <div className="space-y-4">
           {/* Progress Header Card */}
-          <div className="bg-gradient-to-br from-white to-emerald-50/70 p-4 rounded-3xl border border-emerald-200/80 shadow-soft space-y-3">
+          <div className="bg-gradient-to-br from-white to-emerald-50/70 dark:from-slate-900 dark:to-emerald-950/30 p-4 rounded-3xl border border-emerald-200/80 dark:border-emerald-900/60 shadow-soft space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                   Shopping Progress
                 </span>
-                <h3 className="text-base font-black text-slate-900">
+                <h3 className="text-base font-black text-slate-900 dark:text-white">
                   Next Week Grocery Checklist
                 </h3>
               </div>
               <button
                 onClick={handleCopyGroceryList}
-                className="px-3 py-1.5 bg-white border border-emerald-300 text-emerald-800 rounded-xl text-xs font-extrabold shadow-sm hover:bg-emerald-50 active:scale-95 flex items-center gap-1 transition-all"
+                className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs font-extrabold shadow-sm hover:bg-emerald-50 dark:hover:bg-slate-700 active:scale-95 flex items-center gap-1 transition-all"
               >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-emerald-600" />}
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
                 <span>{copied ? "Copied!" : "Copy List"}</span>
               </button>
             </div>
 
             {/* Visual Progress Bar */}
             <div>
-              <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
+              <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 <span>{checkedCount} of {allGroceryItems.length} items purchased</span>
-                <span className="text-emerald-700">{progressPercent}%</span>
+                <span className="text-emerald-700 dark:text-emerald-400">{progressPercent}%</span>
               </div>
-              <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+              <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300"
                   style={{ width: `${progressPercent}%` }}
@@ -297,13 +297,13 @@ export default function DietPlanScreen() {
           </div>
 
           {/* Quick Add Custom Grocery Item */}
-          <form onSubmit={handleAddCustomGrocery} className="bg-white p-3 rounded-2xl border border-slate-200 shadow-soft flex gap-2">
+          <form onSubmit={handleAddCustomGrocery} className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-soft flex gap-2">
             <input
               type="text"
               value={newGroceryInput}
               onChange={(e) => setNewGroceryInput(e.target.value)}
               placeholder="Add item (e.g. Dark Chocolate, Peanut Butter, Green Tea)..."
-              className="flex-1 px-3 py-2 text-xs font-bold text-slate-800 bg-slate-50 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="flex-1 px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             />
             <button
               type="submit"
@@ -316,8 +316,8 @@ export default function DietPlanScreen() {
 
           {/* Custom Items (if any) */}
           {customGroceryList.length > 0 && (
-            <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-soft space-y-2.5">
-              <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-soft space-y-2.5">
+              <span className="text-xs font-black text-slate-800 dark:text-white flex items-center gap-1.5">
                 <span>📝</span>
                 <span>My Custom Added Items ({customGroceryList.length})</span>
               </span>
@@ -328,13 +328,13 @@ export default function DietPlanScreen() {
                     onClick={() => toggleCheckItem(item)}
                     className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                       checkedItems[item]
-                        ? 'bg-emerald-50/60 border-emerald-200 text-slate-400 line-through'
-                        : 'bg-white border-slate-100 text-slate-800 hover:border-emerald-300'
+                        ? 'bg-emerald-50/60 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-slate-400 dark:text-slate-500 line-through'
+                        : 'bg-white dark:bg-slate-800/80 border-slate-100 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:border-emerald-300'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
                       <div className={`w-5 h-5 rounded-lg flex items-center justify-center transition-colors ${
-                        checkedItems[item] ? 'bg-emerald-600 text-white' : 'border border-slate-300'
+                        checkedItems[item] ? 'bg-emerald-600 text-white' : 'border border-slate-300 dark:border-slate-600'
                       }`}>
                         {checkedItems[item] && <Check className="w-3.5 h-3.5" />}
                       </div>
@@ -348,10 +348,10 @@ export default function DietPlanScreen() {
 
           {/* Categorized Grocery Checklist */}
           {groceryCategories.map((categoryGroup, catIndex) => (
-            <div key={catIndex} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-soft space-y-2.5">
+            <div key={catIndex} className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-soft space-y-2.5">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-black text-slate-800">{categoryGroup.category}</h4>
-                <span className="text-[10px] font-bold text-slate-400">
+                <h4 className="text-xs font-black text-slate-800 dark:text-white">{categoryGroup.category}</h4>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
                   {categoryGroup.items.filter(it => checkedItems[it]).length}/{categoryGroup.items.length} bought
                 </span>
               </div>
@@ -365,13 +365,13 @@ export default function DietPlanScreen() {
                       onClick={() => toggleCheckItem(item)}
                       className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                         isChecked
-                          ? 'bg-emerald-50/60 border-emerald-200 text-slate-400 line-through'
-                          : 'bg-slate-50/50 border-slate-100 text-slate-800 hover:border-emerald-300 hover:bg-white'
+                          ? 'bg-emerald-50/60 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-slate-400 dark:text-slate-500 line-through'
+                          : 'bg-slate-50/50 dark:bg-slate-800/80 border-slate-100 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:border-emerald-300 hover:bg-white dark:hover:bg-slate-800'
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
                         <div className={`w-5 h-5 rounded-lg flex items-center justify-center transition-colors ${
-                          isChecked ? 'bg-emerald-600 text-white shadow-sm' : 'border border-slate-300 bg-white'
+                          isChecked ? 'bg-emerald-600 text-white shadow-sm' : 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
                         }`}>
                           {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                         </div>

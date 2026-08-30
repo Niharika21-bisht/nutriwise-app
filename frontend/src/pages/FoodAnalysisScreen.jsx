@@ -104,23 +104,23 @@ export default function FoodAnalysisScreen() {
   };
 
   return (
-    <div className="pb-28 px-4 pt-2 max-w-md mx-auto space-y-4 animate-fadeIn">
+    <div className="pb-28 px-4 pt-2 max-w-md mx-auto space-y-4 animate-fadeIn transition-colors">
       {/* Top Bar */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => setCurrentScreen('scan')}
-          className="p-2 -ml-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 flex items-center gap-1 text-xs font-bold"
+          className="p-2 -ml-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1 text-xs font-bold transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Scanner</span>
         </button>
-        <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+        <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
           AI Nutrition Intelligence
         </span>
       </div>
 
       {/* 1. Image Preview & Food Title */}
-      <div className="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-soft">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border border-slate-100 dark:border-slate-800 shadow-soft">
         {scannedImage && (
           <div className="relative h-44 w-full bg-slate-900">
             <img src={scannedImage} alt={food_item.name} className="w-full h-full object-cover" />
@@ -136,12 +136,12 @@ export default function FoodAnalysisScreen() {
         )}
 
         {!scannedImage && (
-          <div className={`p-4 border-b ${isNotSuitable ? 'bg-rose-50/70 border-rose-200' : 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-100'}`}>
-            <span className={`text-[10px] font-extrabold uppercase tracking-wider block ${isNotSuitable ? 'text-rose-700' : 'text-emerald-700'}`}>
+          <div className={`p-4 border-b ${isNotSuitable ? 'bg-rose-50/70 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800' : 'bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-slate-900 dark:to-emerald-950/40 border-emerald-100 dark:border-slate-800'}`}>
+            <span className={`text-[10px] font-extrabold uppercase tracking-wider block ${isNotSuitable ? 'text-rose-700 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
               {food_item.category}
             </span>
-            <h3 className="text-xl font-black text-slate-900 mt-0.5">{food_item.name}</h3>
-            <span className="text-xs text-slate-500 font-medium">{food_item.serving_size}</span>
+            <h3 className="text-xl font-black text-slate-900 dark:text-white mt-0.5">{food_item.name}</h3>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{food_item.serving_size}</span>
           </div>
         )}
 
@@ -164,37 +164,37 @@ export default function FoodAnalysisScreen() {
         </div>
 
         {/* Macro Numbers Grid */}
-        <div className="p-4 grid grid-cols-4 gap-2 text-center bg-white">
-          <div className={`p-2 rounded-2xl border ${isNotSuitable && food_item.calories > 450 ? 'bg-rose-50/80 border-rose-200 text-rose-900' : 'bg-slate-50 border-slate-100'}`}>
-            <span className="text-[10px] font-bold text-slate-400 uppercase block">Calories</span>
-            <span className="text-sm font-black text-slate-800">{food_item.calories}</span>
-            <span className="text-[9px] text-slate-400 block">kcal</span>
+        <div className="p-4 grid grid-cols-4 gap-2 text-center bg-white dark:bg-slate-900">
+          <div className={`p-2 rounded-2xl border ${isNotSuitable && food_item.calories > 450 ? 'bg-rose-50/80 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200' : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-800 dark:text-slate-100'}`}>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block">Calories</span>
+            <span className="text-sm font-black">{food_item.calories}</span>
+            <span className="text-[9px] text-slate-400 dark:text-slate-500 block">kcal</span>
           </div>
 
-          <div className={`p-2 rounded-2xl border ${food_item.protein_g < 8 ? 'bg-amber-50/80 border-amber-200 text-amber-900' : 'bg-blue-50 border-blue-100 text-blue-900'}`}>
-            <span className="text-[10px] font-bold text-blue-500 uppercase block">Protein</span>
-            <span className="text-sm font-black text-blue-700">{food_item.protein_g}g</span>
-            <span className="text-[9px] text-blue-400 block">{food_item.protein_g < 8 ? 'Low' : 'Density'}</span>
+          <div className={`p-2 rounded-2xl border ${food_item.protein_g < 8 ? 'bg-amber-50/80 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200' : 'bg-blue-50 dark:bg-blue-950/60 border-blue-100 dark:border-blue-800 text-blue-900 dark:text-blue-200'}`}>
+            <span className="text-[10px] font-bold text-blue-500 dark:text-blue-400 uppercase block">Protein</span>
+            <span className="text-sm font-black">{food_item.protein_g}g</span>
+            <span className="text-[9px] text-blue-400 dark:text-blue-300 block">{food_item.protein_g < 8 ? 'Low' : 'Density'}</span>
           </div>
 
-          <div className="p-2 rounded-2xl bg-slate-50 border border-slate-100">
-            <span className="text-[10px] font-bold text-slate-400 uppercase block">Carbs</span>
-            <span className="text-sm font-black text-slate-800">{food_item.carbs_g}g</span>
-            <span className="text-[9px] text-slate-400 block">Energy</span>
+          <div className="p-2 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block">Carbs</span>
+            <span className="text-sm font-black text-slate-800 dark:text-slate-100">{food_item.carbs_g}g</span>
+            <span className="text-[9px] text-slate-400 dark:text-slate-500 block">Energy</span>
           </div>
 
-          <div className={`p-2 rounded-2xl border ${food_item.fat_g > 20 ? 'bg-rose-50/80 border-rose-200 text-rose-900' : 'bg-slate-50 border-slate-100'}`}>
-            <span className="text-[10px] font-bold text-slate-400 uppercase block">Fat</span>
-            <span className="text-sm font-black text-slate-800">{food_item.fat_g}g</span>
-            <span className="text-[9px] text-slate-400 block">{food_item.fat_g > 20 ? 'High' : 'Lipids'}</span>
+          <div className={`p-2 rounded-2xl border ${food_item.fat_g > 20 ? 'bg-rose-50/80 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200' : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-800 dark:text-slate-100'}`}>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block">Fat</span>
+            <span className="text-sm font-black">{food_item.fat_g}g</span>
+            <span className="text-[9px] text-slate-400 dark:text-slate-500 block">{food_item.fat_g > 20 ? 'High' : 'Lipids'}</span>
           </div>
         </div>
       </div>
 
       {/* 2. 🎯 Personalized Diet Plan Suitability Card with In-Depth Explanation */}
-      <div className={`p-4 rounded-3xl border shadow-soft space-y-3 ${isNotSuitable ? 'bg-rose-50/50 border-rose-200' : 'bg-white border-slate-100'}`}>
+      <div className={`p-4 rounded-3xl border shadow-soft space-y-3 ${isNotSuitable ? 'bg-rose-50/50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800'}`}>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
             Diet Plan Suitability Evaluation
           </span>
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${suitabilityAnalysis.badgeColor}`}>
@@ -203,13 +203,13 @@ export default function FoodAnalysisScreen() {
         </div>
 
         {/* Detailed Suitability Explanation */}
-        <div className={`p-3.5 rounded-2xl border text-xs font-medium leading-relaxed space-y-2 ${isNotSuitable ? 'bg-white border-rose-200 text-rose-900' : 'bg-slate-50 border-slate-200/80 text-slate-700'}`}>
+        <div className={`p-3.5 rounded-2xl border text-xs font-medium leading-relaxed space-y-2 ${isNotSuitable ? 'bg-white dark:bg-slate-800 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200' : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-300'}`}>
           <p>{suitabilityAnalysis.explanation}</p>
         </div>
 
         {/* Slot Selection Buttons */}
-        <div className="pt-2 border-t border-slate-100">
-          <span className="text-[11px] font-bold text-slate-600 block mb-1.5">
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+          <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1.5">
             Evaluating suitability for meal window:
           </span>
           <div className="grid grid-cols-4 gap-1.5">
@@ -220,7 +220,7 @@ export default function FoodAnalysisScreen() {
                 className={`py-2 rounded-xl text-xs font-extrabold capitalize transition-all ${
                   selectedSlot === slot
                     ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
                 {slot}
@@ -232,22 +232,22 @@ export default function FoodAnalysisScreen() {
 
       {/* 3. 💡 Recommended Seasonal Alternatives with Explanations */}
       {suitabilityAnalysis.alternatives && suitabilityAnalysis.alternatives.length > 0 && (
-        <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-soft space-y-3">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-soft space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-emerald-600" />
-              <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+              <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
                 {isNotSuitable
                   ? "Healthier Seasonal Alternatives (Recommended)"
                   : "Nutritionally Equivalent Local Alternatives"}
               </h4>
             </div>
-            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 px-2 py-0.5 rounded-md border border-emerald-200/50 dark:border-emerald-800">
               In-Season
             </span>
           </div>
 
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
             {isNotSuitable
               ? `Instead of "${food_item.name}", here are practical, delicious local options that will keep your daily score high:`
               : "Prefer something else? These local seasonal dishes provide equivalent macro density:"}
@@ -257,14 +257,14 @@ export default function FoodAnalysisScreen() {
             {suitabilityAnalysis.alternatives.map((alt, idx) => (
               <div
                 key={idx}
-                className="p-3.5 rounded-2xl border border-slate-200/90 bg-slate-50/60 hover:bg-white hover:border-emerald-300 transition-all space-y-2"
+                className="p-3.5 rounded-2xl border border-slate-200/90 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 hover:border-emerald-300 dark:hover:border-emerald-600 transition-all space-y-2"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
-                    <h5 className="text-xs font-black text-slate-900">{alt.name}</h5>
-                    <div className="flex items-center gap-2 mt-1 text-[10px] font-bold text-slate-600">
-                      <span className="text-amber-700 font-black">🔥 {alt.calories} kcal</span>
-                      <span className="text-blue-700 font-black">💪 {alt.protein_g}g protein</span>
+                    <h5 className="text-xs font-black text-slate-900 dark:text-white">{alt.name}</h5>
+                    <div className="flex items-center gap-2 mt-1 text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                      <span className="text-amber-700 dark:text-amber-400 font-black">🔥 {alt.calories} kcal</span>
+                      <span className="text-blue-700 dark:text-blue-400 font-black">💪 {alt.protein_g}g protein</span>
                     </div>
                   </div>
 
@@ -279,17 +279,17 @@ export default function FoodAnalysisScreen() {
                 </div>
 
                 {/* Explanation of Why This Alternative is Better */}
-                <div className="p-2 bg-white rounded-xl border border-slate-100 text-[11px] text-slate-600 space-y-1">
-                  <div className="font-bold text-emerald-800 flex items-center gap-1">
-                    <Zap className="w-3 h-3 text-emerald-600 flex-shrink-0" />
+                <div className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
+                  <div className="font-bold text-emerald-800 dark:text-emerald-400 flex items-center gap-1">
+                    <Zap className="w-3 h-3 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
                     <span>Why this is better:</span>
                   </div>
                   <p className="leading-relaxed">{alt.why_better}</p>
                 </div>
 
                 {alt.local_availability && (
-                  <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400">
-                    <MapPin className="w-2.5 h-2.5 text-emerald-600" />
+                  <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 dark:text-slate-500">
+                    <MapPin className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
                     <span>{alt.local_availability}</span>
                   </div>
                 )}
@@ -315,7 +315,7 @@ export default function FoodAnalysisScreen() {
 
         <button
           onClick={() => setCurrentScreen('scan')}
-          className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors"
+          className="w-full py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-colors"
         >
           Scan / Type a Different Food Item
         </button>

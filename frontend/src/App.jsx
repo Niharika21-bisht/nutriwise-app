@@ -16,6 +16,9 @@ import DietPlanScreen from './pages/DietPlanScreen';
 import ScanScreen from './pages/ScanScreen';
 import FoodAnalysisScreen from './pages/FoodAnalysisScreen';
 import MakeMealBetterScreen from './pages/MakeMealBetterScreen';
+import WaterTrackerScreen from './pages/WaterTrackerScreen';
+import ProteinTrackerScreen from './pages/ProteinTrackerScreen';
+import MealBalanceScreen from './pages/MealBalanceScreen';
 
 function AppContent() {
   const { currentScreen, viewportMode } = useApp();
@@ -32,6 +35,12 @@ function AppContent() {
         return <ProfileCreatedScreen />;
       case 'home':
         return <HomeScreen />;
+      case 'water_tracker':
+        return <WaterTrackerScreen />;
+      case 'protein_tracker':
+        return <ProteinTrackerScreen />;
+      case 'meal_balance':
+        return <MealBalanceScreen />;
       case 'profile':
         return <ProfileScreen />;
       case 'progress':
@@ -56,9 +65,9 @@ function AppContent() {
 
       {/* Main Container: Mobile phone mockup or responsive wide mode */}
       <div
-        className={`w-full bg-slate-50 relative overflow-hidden transition-all duration-300 ${
+        className={`w-full bg-slate-50 dark:bg-slate-950 relative overflow-hidden transition-all duration-300 ${
           viewportMode === 'mobile'
-            ? 'max-w-md md:rounded-[40px] md:shadow-2xl md:border-8 md:border-slate-800 md:min-h-[844px] min-h-screen flex flex-col justify-between'
+            ? 'max-w-md md:rounded-[40px] md:shadow-2xl md:border-8 md:border-slate-800 dark:md:border-slate-800 md:min-h-[844px] min-h-screen flex flex-col justify-between'
             : 'max-w-4xl md:rounded-3xl md:shadow-2xl min-h-screen flex flex-col justify-between'
         }`}
       >
